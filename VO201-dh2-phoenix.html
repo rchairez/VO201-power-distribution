@@ -1,0 +1,1632 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ORD3 Data Hall 2 (Volo II / Chirisa) — Power Distribution</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: #f0f2f8; color: #1e2a3a; font-family: -apple-system, 'Segoe UI', system-ui, sans-serif; font-size: 13px; display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
+
+  #header { background: #ffffff; padding: 11px 18px; border-bottom: 1px solid rgba(0,0,0,0.08); display: flex; align-items: center; gap: 16px; flex-shrink: 0; box-shadow: 0 1px 3px rgba(0,0,0,0.06); }
+  #header h1 { font-size: 15px; font-weight: 700; color: #1e2a3a; letter-spacing: -0.2px; }
+  #header .subtitle { font-size: 11px; color: #94a3b8; margin-top: 2px; }
+  #legend { background: #fff; border-bottom: 1px solid rgba(0,0,0,0.06); padding: 6px 18px; display: flex; align-items: center; gap: 14px; flex-shrink: 0; font-size: 11px; flex-wrap: wrap; }
+  .legend-item { display: flex; align-items: center; gap: 5px; font-size: 11px; color: #64748b; }
+  .legend-item.clickable { cursor: pointer; padding: 3px 7px; border-radius: 5px; border: 1px solid transparent; transition: all 0.12s; }
+  .legend-item.clickable:hover { background: rgba(0,0,0,0.05); border-color: rgba(0,0,0,0.08); }
+  .legend-item.feed-active { background: rgba(99,102,241,0.1); border-color: rgba(99,102,241,0.3) !important; font-weight: 700; }
+  .legend-dot { width: 10px; height: 10px; border-radius: 3px; }
+  .legend-divider { width: 1px; height: 16px; background: rgba(0,0,0,0.1); margin: 0 2px; flex-shrink: 0; }
+
+  .layout { display: flex; flex: 1; overflow: hidden; }
+
+  .panel-sidebar { width: 224px; background: #fff; border-right: 1px solid rgba(0,0,0,0.07); display: flex; flex-direction: column; overflow: hidden; flex-shrink: 0; }
+  .panel-sidebar h2 { font-size: 10px; font-weight: 700; color: #94a3b8; text-transform: uppercase; letter-spacing: 1px; padding: 11px 14px 8px; border-bottom: 1px solid rgba(0,0,0,0.06); flex-shrink: 0; }
+  .panel-list { overflow-y: auto; flex: 1; padding: 6px; }
+  .panel-group { margin-bottom: 12px; }
+  .panel-group-label { font-size: 9px; font-weight: 700; color: #cbd5e1; text-transform: uppercase; letter-spacing: 1px; padding: 6px 8px 4px; display: flex; align-items: center; gap: 5px; cursor: pointer; border-radius: 5px; transition: background 0.1s; }
+  .panel-group-label:hover { background: rgba(0,0,0,0.04); color: #94a3b8; }
+  .pg-chev { font-size: 9px; flex-shrink: 0; color: #94a3b8; width: 12px; text-align: center; }
+  .panel-item { padding: 6px 8px; border-radius: 6px; cursor: pointer; border: 1px solid transparent; margin-bottom: 2px; transition: all 0.12s; display: flex; align-items: center; gap: 8px; }
+  .panel-item:hover { background: #f0f2f8; border-color: rgba(0,0,0,0.06); }
+  .panel-item.selected { background: #ede9fe; border-color: rgba(99,102,241,0.25); }
+  .panel-dot { width: 8px; height: 8px; border-radius: 2px; flex-shrink: 0; }
+  .panel-name { font-size: 11px; font-weight: 600; color: #334155; }
+  .panel-sub { font-size: 10px; color: #94a3b8; }
+
+  .main { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+  .floor-area { flex: 1; overflow: auto; padding: 14px; position: relative; }
+  #zoom-ctrl { position: absolute; bottom: 14px; right: 14px; display: flex; align-items: center; gap: 4px; background: rgba(255,255,255,0.92); border: 1px solid rgba(0,0,0,0.1); border-radius: 8px; padding: 4px 6px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); z-index: 50; backdrop-filter: blur(6px); }
+  #zoom-ctrl button { width: 22px; height: 22px; border: none; background: #f1f5f9; border-radius: 5px; cursor: pointer; font-size: 14px; font-weight: 700; color: #475569; display: flex; align-items: center; justify-content: center; transition: background 0.1s; line-height: 1; padding: 0; }
+  #zoom-ctrl button:hover { background: #e2e8f0; color: #1e2a3a; }
+  #zoom-level { font-size: 10px; font-weight: 700; color: #64748b; min-width: 34px; text-align: center; }
+  .floor-plan { display: flex; flex-direction: column; gap: 3px; min-width: 600px; }
+  .zone-label { font-size: 9px; font-weight: 700; color: #cbd5e1; text-transform: uppercase; letter-spacing: 1.5px; padding: 8px 0 3px; }
+
+  .row-wrapper { display: flex; align-items: center; gap: 6px; }
+  .row-num { width: 20px; font-size: 9px; color: #cbd5e1; text-align: right; flex-shrink: 0; }
+  .row-panel-tags { display: flex; flex-direction: column; gap: 2px; width: 78px; flex-shrink: 0; }
+  .row-tag { font-size: 9px; font-weight: 700; padding: 2px 5px; border-radius: 4px; text-align: center; cursor: pointer; opacity: 0.85; transition: all 0.12s; }
+  .row-tag:hover { opacity: 1; }
+  .row-tag.selected { opacity: 1; box-shadow: 0 0 0 2px rgba(0,0,0,0.2); }
+
+  .cab-row { display: flex; gap: 2px; }
+  .cab { width: 56px; height: 44px; border-radius: 5px; cursor: pointer; display: flex; flex-direction: column; align-items: center; justify-content: center; border: 1px solid rgba(0,0,0,0.08); transition: all 0.12s; position: relative; }
+  .cab:hover { border-color: rgba(0,0,0,0.2); transform: translateY(-1px); box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
+  .cab.selected { border-color: #6366f1 !important; border-width: 1.5px; z-index: 2; box-shadow: 0 0 0 2px rgba(99,102,241,0.2); }
+  .cab.dimmed { opacity: 0.2; }
+  .cab.highlighted { opacity: 1; }
+  .cab-num { font-size: 9px; color: rgba(255,255,255,0.75); line-height: 1; }
+  .cab-type { font-size: 8px; color: rgba(255,255,255,0.55); line-height: 1; margin-top: 1px; text-align: center; padding: 0 2px; }
+  .cab-strips { position: absolute; bottom: 0; left: 0; right: 0; height: 4px; display: flex; border-radius: 0 0 4px 4px; overflow: hidden; }
+  .cab-strip { flex: 1; }
+  .cab.compute { background: linear-gradient(160deg, #8adcbc 0%, #6cc9a8 100%); border-color: rgba(100,200,165,0.55); box-shadow: inset 0 1px 0 rgba(255,255,255,0.45), inset 0 -1px 0 rgba(0,0,0,0.08); }
+  .cab.network { background: linear-gradient(160deg, #82c2f0 0%, #68aee4 100%); border-color: rgba(100,165,228,0.55); box-shadow: inset 0 1px 0 rgba(255,255,255,0.45), inset 0 -1px 0 rgba(0,0,0,0.08); }
+  .cab.empty { background: #c8d0dc; opacity: 0.5; cursor: default; }
+
+  .detail-col { width: 300px; flex-shrink: 0; display: flex; flex-direction: column; overflow: hidden; border-left: 1px solid rgba(0,0,0,0.07); background: #fff; transition: width 0.2s ease, border 0.2s ease; }
+  .detail-col.dp-hidden { width: 0; border-left: none; }
+  .detail-col-hdr { padding: 11px 14px; font-size: 10px; font-weight: 700; color: #94a3b8; border-bottom: 1px solid rgba(0,0,0,0.06); display: flex; align-items: center; justify-content: space-between; text-transform: uppercase; letter-spacing: 0.8px; flex-shrink: 0; white-space: nowrap; }
+  .detail-col-hdr button { font-size: 11px; background: #f1f5f9; border: 1px solid rgba(0,0,0,0.08); color: #94a3b8; cursor: pointer; padding: 3px 8px; border-radius: 5px; transition: all 0.12s; font-family: inherit; }
+  .detail-col-hdr button:hover { background: #e8edf5; color: #64748b; }
+  .detail-panel { flex: 1; background: #fff; padding: 14px; overflow-y: auto; }
+  #jira-status-summary { display:none; overflow-y:auto; max-height:45%; flex-shrink:0; border-bottom:1px solid rgba(0,0,0,0.07); }
+  .js-header { padding:7px 12px; font-size:9px; font-weight:700; color:#94a3b8; text-transform:uppercase; letter-spacing:0.8px; display:flex; justify-content:space-between; align-items:center; background:#f8fafc; border-bottom:1px solid rgba(0,0,0,0.06); }
+  .js-status-row { padding:5px 10px; cursor:pointer; display:flex; align-items:center; gap:6px; transition:background 0.1s; user-select:none; border-top:1px solid rgba(0,0,0,0.04); }
+  .js-status-row:hover { background:rgba(99,102,241,0.05); }
+  .js-status-row.active { background:rgba(99,102,241,0.1); }
+  .js-dot { width:8px; height:8px; border-radius:50%; flex-shrink:0; }
+  .js-dot.red { background:#ef4444; } .js-dot.blue { background:#3b82f6; } .js-dot.green { background:#16a34a; }
+  .js-status-name { flex:1; font-size:11px; font-weight:600; color:#334155; }
+  .js-count { font-size:10px; color:#94a3b8; }
+  .js-tickets { padding:2px 10px 5px 24px; }
+  .js-ticket { display:flex; align-items:baseline; gap:4px; padding:2px 0; font-size:10px; min-width:0; }
+  .js-ticket.active .js-ticket-cabs { color:#6366f1; border-color:rgba(99,102,241,0.4); background:rgba(99,102,241,0.1); }
+  .js-ticket-key { color:#6366f1; font-family:monospace; font-weight:700; flex-shrink:0; text-decoration:none; font-size:10px; }
+  .js-ticket-key:hover { text-decoration:underline; }
+  .js-ticket-sum { flex:1; color:#64748b; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; min-width:0; }
+  .js-ticket-cabs { color:#94a3b8; cursor:pointer; flex-shrink:0; font-size:9px; font-weight:600; padding:1px 4px; border-radius:3px; border:1px solid rgba(0,0,0,0.08); }
+  .js-ticket-cabs:hover { color:#6366f1; border-color:rgba(99,102,241,0.3); background:rgba(99,102,241,0.05); }
+  .detail-panel h3 { font-size: 13px; font-weight: 700; margin-bottom: 10px; color: #1e2a3a; }
+  .detail-panel .empty-state { color: #cbd5e1; font-size: 12px; text-align: center; margin-top: 50px; line-height: 2.2; }
+  .detail-section { margin-bottom: 16px; }
+  .detail-section h4 { font-size: 9px; font-weight: 700; color: #cbd5e1; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 8px; border-bottom: 1px solid rgba(0,0,0,0.06); padding-bottom: 5px; }
+  .detail-row { display: flex; justify-content: space-between; align-items: center; padding: 4px 0; font-size: 12px; border-bottom: 1px solid rgba(0,0,0,0.04); }
+  .detail-row:last-child { border-bottom: none; }
+  .detail-label { color: #94a3b8; }
+  .detail-value { font-weight: 600; color: #334155; }
+  .feed-badge { display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; border-radius: 6px; font-size: 11px; font-weight: 700; margin: 2px 0; cursor: pointer; transition: opacity 0.12s; }
+  .feed-badge:hover { opacity: 0.8; }
+  .feed-dot { width: 7px; height: 7px; border-radius: 2px; }
+  .impact-card { background: #f8fafc; border: 1px solid rgba(0,0,0,0.07); border-radius: 8px; padding: 10px 12px; margin-bottom: 6px; font-size: 11px; }
+  .impact-card .ic-title { font-weight: 700; font-size: 12px; margin-bottom: 4px; }
+  .impact-card .ic-sub { color: #94a3b8; font-size: 10px; }
+  .note-box { background: #f8fafc; border: 1px solid rgba(0,0,0,0.07); border-radius: 8px; padding: 10px; font-size: 11px; color: #64748b; margin-top: 8px; line-height: 1.65; }
+  .clear-btn { background: #fef2f2; color: #dc2626; border: 1px solid #fecaca; border-radius: 6px; padding: 5px 12px; font-size: 11px; font-weight: 600; cursor: pointer; transition: all 0.12s; }
+  .clear-btn:hover { background: #fee2e2; }
+
+  #search-box { margin-left: auto; position: relative; flex-shrink: 0; }
+  #search-box input { background: #f0f2f8; border: 1px solid rgba(0,0,0,0.1); border-radius: 8px; padding: 7px 12px 7px 32px; color: #1e2a3a; font-size: 12px; width: 220px; outline: none; transition: border-color 0.15s, background 0.15s; }
+  #search-box input::placeholder { color: #b0bec5; }
+  #search-box input:focus { border-color: rgba(99,102,241,0.5); background: #fff; box-shadow: 0 0 0 3px rgba(99,102,241,0.08); }
+  #search-box .search-icon { position: absolute; left: 10px; top: 50%; transform: translateY(-50%); color: #b0bec5; font-size: 12px; pointer-events: none; }
+  #searchResults { position: absolute; top: calc(100% + 6px); right: 0; width: 300px; background: #fff; border: 1px solid rgba(0,0,0,0.1); border-radius: 10px; box-shadow: 0 10px 30px rgba(0,0,0,0.12); z-index: 100; max-height: 300px; overflow-y: auto; display: none; }
+  .search-result-item { padding: 9px 14px; cursor: pointer; border-bottom: 1px solid rgba(0,0,0,0.05); font-size: 12px; transition: background 0.1s; }
+  .search-result-item:last-child { border-bottom: none; }
+  .search-result-item:hover { background: #f8fafc; }
+
+  ::-webkit-scrollbar { width: 5px; height: 5px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.1); border-radius: 3px; }
+  .aisle-label { text-align: center; font-size: 9px; font-weight: 700; color: #dde3f0; text-transform: uppercase; letter-spacing: 2px; padding: 4px 0; }
+  @keyframes radar-ping { 0%{transform:scale(1);opacity:0.8} 70%{transform:scale(3);opacity:0} 100%{transform:scale(3);opacity:0} }
+  .jira-badge { position:absolute; top:3px; right:3px; color:#fff; font-size:7px; font-weight:800; border-radius:50%; width:15px; height:15px; display:flex; align-items:center; justify-content:center; z-index:20; pointer-events:none; overflow:visible; }
+  .jira-badge::after { content:''; position:absolute; inset:0; border-radius:50%; animation:radar-ping 2s ease-out infinite; }
+  .jira-badge.red   { background:#ef4444; } .jira-badge.red::after   { background:rgba(239,68,68,0.55); }
+  .jira-badge.blue  { background:#3b82f6; } .jira-badge.blue::after  { background:rgba(59,130,246,0.55); }
+  .jira-badge.green { background:#16a34a; } .jira-badge.green::after { background:rgba(22,163,74,0.55); }
+  .nb-dot { display:inline-block; width:8px; height:8px; border-radius:50%; margin-right:5px; vertical-align:middle; flex-shrink:0; position:relative; overflow:visible; }
+  .nb-dot::after { content:''; position:absolute; inset:0; border-radius:50%; }
+  .nb-dot.live { background:#22c55e; } .nb-dot.live::after { background:rgba(34,197,94,0.55); animation:radar-ping 2s ease-out infinite; }
+  .jira-ticket-section { background:#faf5ff; border:1px solid #e9d5ff; border-radius:8px; padding:10px 12px; margin-bottom:12px; }
+  .jira-ticket-section h3 { font-size:9px; font-weight:700; color:#7c3aed; text-transform:uppercase; letter-spacing:1px; margin-bottom:8px; }
+  .jira-ticket-item { display:flex; align-items:flex-start; gap:6px; padding:4px 0; border-bottom:1px solid rgba(0,0,0,0.05); font-size:10px; }
+  .jira-ticket-item:last-child { border-bottom:none; }
+  .jira-ticket-key { color:#6366f1; font-family:monospace; font-size:10px; font-weight:700; white-space:nowrap; flex-shrink:0; }
+  .jira-ticket-sum { color:#334155; flex:1; line-height:1.4; }
+  .jira-ticket-status { font-size:9px; color:#94a3b8; white-space:nowrap; flex-shrink:0; }
+
+  /* Export modal */
+  #export-modal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.4); z-index: 1000; align-items: center; justify-content: center; }
+  #export-modal.open { display: flex; }
+  #export-box { background: #fff; border-radius: 12px; box-shadow: 0 8px 32px rgba(0,0,0,0.18); width: 500px; max-width: 92vw; display: flex; flex-direction: column; overflow: hidden; }
+  .ex-head { display: flex; align-items: flex-start; justify-content: space-between; padding: 16px 18px 12px; border-bottom: 1px solid rgba(0,0,0,0.07); }
+  .ex-title { font-size: 13px; font-weight: 700; color: #1e2a3a; }
+  .ex-count { font-size: 11px; color: #94a3b8; margin-top: 2px; }
+  .ex-close { background: #f1f5f9; border: 1px solid rgba(0,0,0,0.08); color: #94a3b8; border-radius: 6px; padding: 4px 10px; font-size: 12px; cursor: pointer; transition: all 0.12s; }
+  .ex-close:hover { background: #e2e8f0; color: #334155; }
+  #ex-textarea { flex: 1; padding: 12px 14px; font-family: 'Menlo', 'Consolas', monospace; font-size: 11px; border: none; border-bottom: 1px solid rgba(0,0,0,0.07); resize: none; min-height: 200px; max-height: 340px; color: #334155; background: #f8fafc; outline: none; }
+  .ex-actions { display: flex; gap: 8px; padding: 12px 14px; }
+  .ex-btn { padding: 7px 16px; border-radius: 7px; font-size: 12px; font-weight: 600; cursor: pointer; border: 1px solid; transition: all 0.15s; font-family: inherit; }
+  .ex-btn-copy { background: #6366f1; color: #fff; border-color: #6366f1; }
+  .ex-btn-copy:hover { background: #4f46e5; }
+  .ex-btn-copy.copied { background: #22c55e; border-color: #22c55e; }
+  .ex-btn-dl { background: #f1f5f9; color: #475569; border-color: rgba(0,0,0,0.1); }
+  .ex-btn-dl:hover { background: #e2e8f0; }
+  .ex-open-btn { background: #f1f5f9; border: 1px solid rgba(0,0,0,0.1); color: #475569; border-radius: 6px; padding: 5px 10px; font-size: 11px; font-weight: 600; cursor: pointer; transition: all 0.12s; font-family: inherit; }
+  .ex-open-btn:hover { color: #6366f1; }
+
+  #stats-bar { background: #f0f2f8; border-top: 1px solid rgba(0,0,0,0.06); padding: 5px 18px; display: flex; gap: 24px; font-size: 10px; color: #94a3b8; flex-shrink: 0; flex-wrap: wrap; align-items: center; }
+  #stats-bar .stat { display: flex; align-items: center; gap: 5px; }
+  #stats-bar .stat-val { color: #334155; font-weight: 700; }
+  #stats-bar .stat-dot { width: 6px; height: 6px; border-radius: 2px; }
+</style>
+</head>
+<body>
+
+<div id="header">
+  <div>
+    <div style="display:flex;align-items:center;gap:9px;">
+      <h1>DH2 (Phoenix)</h1>
+      <span id="nb-status" style="font-size:10px;font-weight:600;color:#94a3b8;padding:2px 7px;background:#f0f2f8;border:1px solid rgba(0,0,0,0.08);border-radius:4px;display:inline-flex;align-items:center;" title="Data source">&#8635; Loading&hellip;</span>
+    </div>
+  </div>
+  <div id="search-box">
+    <span class="search-icon">&#128269;</span>
+    <input type="text" id="searchInput" placeholder="Search cabinet #, serial…" autocomplete="off" oninput="doSearch(this.value)">
+    <div id="searchResults"></div>
+  </div>
+</div>
+<div id="legend">
+  <div class="legend-item clickable" id="leg-feedC" data-feed="C" onclick="selectFeed('C')" title="Click to highlight all Feed C cabinets"><div class="legend-dot" style="background:#FF9800;"></div>Feed C (1C)</div>
+  <div class="legend-item clickable" id="leg-feedD" data-feed="D" onclick="selectFeed('D')" title="Click to highlight all Feed D cabinets"><div class="legend-dot" style="background:#2196F3;"></div>Feed D (2D)</div>
+  <div class="legend-item clickable" id="leg-feedE" data-feed="E" onclick="selectFeed('E')" title="Click to highlight E-feed cabinets (rows 1–2)"><div class="legend-dot" style="background:#22c55e;"></div>E Feeds (1E&ndash;4E)</div>
+  <div class="legend-divider"></div>
+  <div class="legend-item"><div class="legend-dot" style="background:#4CAF50;"></div>Grid-A Compute</div>
+  <div class="legend-item"><div class="legend-dot" style="background:#607D8B;"></div>Network / Infra</div>
+  <div class="legend-item"><div class="legend-dot" style="background:#37474F;"></div>Empty / Reserved</div>
+</div>
+
+<div class="layout">
+
+  <!-- Left panel sidebar -->
+  <div class="panel-sidebar">
+    <h2 id="irc-panel-hdr" style="cursor:pointer;display:flex;align-items:center;gap:6px;" onclick="toggleIRCPanel()">IRC Panels <span id="irc-panel-chev" style="font-size:9px;color:#94a3b8;margin-left:auto;">&#9660;</span></h2>
+    <div class="panel-list" id="irc-panel-list">
+      <div class="panel-group">
+        <div class="panel-group-label" onclick="togglePanelGroup(this)"><span class="pg-chev">▶</span>Feed C (1C)</div>
+        <div id="feedC-list" style="display:none"></div>
+      </div>
+      <div class="panel-group">
+        <div class="panel-group-label" onclick="togglePanelGroup(this)"><span class="pg-chev">▶</span>Feed D (2D)</div>
+        <div id="feedD-list" style="display:none"></div>
+      </div>
+      <div class="panel-group">
+        <div class="panel-group-label" onclick="togglePanelGroup(this)"><span class="pg-chev">▶</span>E Feeds</div>
+        <div id="feedE-list" style="display:none"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Floor plan -->
+  <div class="main">
+    <div class="floor-area">
+      <div class="floor-plan" id="floorPlan"></div>
+      <div id="zoom-ctrl">
+        <button onclick="adjustZoom(-0.1)" title="Zoom out (-)">−</button>
+        <span id="zoom-level">100%</span>
+        <button onclick="adjustZoom(0.1)" title="Zoom in (+)">+</button>
+        <button onclick="resetZoom()" title="Reset zoom" style="font-size:10px;width:auto;padding:0 6px;">Reset</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Detail panel -->
+  <div class="detail-col dp-hidden" id="detail-col">
+    <div class="detail-col-hdr">Details <button onclick="closeDetailCol()">&#10005;</button></div>
+    <div id="jira-status-summary"></div>
+    <div class="detail-panel" id="detailPanel">
+      <div class="empty-state">
+        <div style="font-size:28px;margin-bottom:10px;">⚡</div>
+        <div>Click a panel or cabinet<br>to see details</div>
+        <div style="margin-top:16px;font-size:10px;color:#37474f;">Data Hall 2 (DH2)<br>Volo II / Chirisa</div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<div id="stats-bar">
+  <div class="stat"><div class="stat-dot" style="background:#3a8f68;"></div><span class="stat-val" id="stat-compute">—</span> GPU compute cabs</div>
+  <div class="stat"><div class="stat-dot" style="background:#3a6ea8;"></div><span class="stat-val" id="stat-network">—</span> network cabs</div>
+  <div class="stat"><div class="stat-dot" style="background:#64748b;"></div><span class="stat-val" id="stat-empty">—</span> reserved</div>
+  <div class="stat">⚡ <span class="stat-val" id="stat-kw">—</span> kW total capacity</div>
+  <div class="stat" style="margin-left:auto;color:#64748b;">Press <kbd style="background:#e2e8f0;border-radius:3px;padding:1px 5px;font-size:9px;border:1px solid rgba(0,0,0,0.12);">⌘K</kbd> to search &nbsp;·&nbsp; <kbd style="background:#e2e8f0;border-radius:3px;padding:1px 5px;font-size:9px;border:1px solid rgba(0,0,0,0.12);">Esc</kbd> to clear</div>
+</div>
+
+<script>
+// ── Data ───────────────────────────────────────────────────────────────────
+
+const ROWS = [{"row": 1, "cabs_lr": ["T1-FE-v3a", "HD-GB3d", "HD-GB3d", "HD-GB3d", "HD-GB3d", "HD-GB3d", "HD-GB3d", "HD-GB3d", "HD-GB3d", "XDR x6a"], "panel": "01", "zone": "compute", "type": "RW-25", "cabinets": [{"pos": 0, "cab": 1, "type": "T1-FE-v3a", "cat": "network"}, {"pos": 1, "cab": 2, "type": "HD-GB3d", "cat": "compute"}, {"pos": 2, "cab": 3, "type": "HD-GB3d", "cat": "compute"}, {"pos": 3, "cab": 4, "type": "HD-GB3d", "cat": "compute"}, {"pos": 4, "cab": 5, "type": "HD-GB3d", "cat": "compute"}, {"pos": 5, "cab": 6, "type": "HD-GB3d", "cat": "compute"}, {"pos": 6, "cab": 7, "type": "HD-GB3d", "cat": "compute"}, {"pos": 7, "cab": 8, "type": "HD-GB3d", "cat": "compute"}, {"pos": 8, "cab": 9, "type": "HD-GB3d", "cat": "compute"}, {"pos": 9, "cab": 10, "type": "XDR x6a", "cat": "network"}]}, {"row": 2, "cabs_lr": ["XDR x6a", "HD-GB3d", "HD-GB3d", "HD-GB3d", "HD-GB3d", "HD-GB3d", "HD-GB3d", "HD-GB3d", "HD-GB3d", "T0-FE-v1a"], "panel": "02", "zone": "compute", "type": "RW-25", "cabinets": [{"pos": 0, "cab": 20, "type": "XDR x6a", "cat": "network"}, {"pos": 1, "cab": 19, "type": "HD-GB3d", "cat": "compute"}, {"pos": 2, "cab": 18, "type": "HD-GB3d", "cat": "compute"}, {"pos": 3, "cab": 17, "type": "HD-GB3d", "cat": "compute"}, {"pos": 4, "cab": 16, "type": "HD-GB3d", "cat": "compute"}, {"pos": 5, "cab": 15, "type": "HD-GB3d", "cat": "compute"}, {"pos": 6, "cab": 14, "type": "HD-GB3d", "cat": "compute"}, {"pos": 7, "cab": 13, "type": "HD-GB3d", "cat": "compute"}, {"pos": 8, "cab": 12, "type": "HD-GB3d", "cat": "compute"}, {"pos": 9, "cab": 11, "type": "T0-FE-v1a", "cat": "network"}]}, {"row": 3, "cabs_lr": ["T0-FE-v1a", "HD-GB3d", "HD-GB3d", "HD-GB3d", "HD-GB3d", "HD-GB3d", "HD-GB3d", "HD-GB3d", "HD-GB3d", "XDR x6a"], "panel": "03", "zone": "compute", "type": "RW-25", "cabinets": [{"pos": 0, "cab": 21, "type": "T0-FE-v1a", "cat": "network"}, {"pos": 1, "cab": 22, "type": "HD-GB3d", "cat": "compute"}, {"pos": 2, "cab": 23, "type": "HD-GB3d", "cat": "compute"}, {"pos": 3, "cab": 24, "type": "HD-GB3d", "cat": "compute"}, {"pos": 4, "cab": 25, "type": "HD-GB3d", "cat": "compute"}, {"pos": 5, "cab": 26, "type": "HD-GB3d", "cat": "compute"}, {"pos": 6, "cab": 27, "type": "HD-GB3d", "cat": "compute"}, {"pos": 7, "cab": 28, "type": "HD-GB3d", "cat": "compute"}, {"pos": 8, "cab": 29, "type": "HD-GB3d", "cat": "compute"}, {"pos": 9, "cab": 30, "type": "XDR x6a", "cat": "network"}]}, {"row": 4, "cabs_lr": ["XDR x6a", "HD-GB3d", "HD-GB3d", "HD-GB3d", "HD-GB3d", "HD-GB3d", "HD-GB3d", "HD-GB3d", "HD-GB3d", "T0-FE-v1a"], "panel": "04", "zone": "compute", "type": "RW-25", "cabinets": [{"pos": 0, "cab": 40, "type": "XDR x6a", "cat": "network"}, {"pos": 1, "cab": 39, "type": "HD-GB3d", "cat": "compute"}, {"pos": 2, "cab": 38, "type": "HD-GB3d", "cat": "compute"}, {"pos": 3, "cab": 37, "type": "HD-GB3d", "cat": "compute"}, {"pos": 4, "cab": 36, "type": "HD-GB3d", "cat": "compute"}, {"pos": 5, "cab": 35, "type": "HD-GB3d", "cat": "compute"}, {"pos": 6, "cab": 34, "type": "HD-GB3d", "cat": "compute"}, {"pos": 7, "cab": 33, "type": "HD-GB3d", "cat": "compute"}, {"pos": 8, "cab": 32, "type": "HD-GB3d", "cat": "compute"}, {"pos": 9, "cab": 31, "type": "T0-FE-v1a", "cat": "network"}]}, {"row": 5, "cabs_lr": ["T0-FE-v1a", "HD-GB3d", "HD-GB3d", "HD-GB3d", "HD-GB3d", "HD-GB3d", "HD-GB3d", "HD-GB3d", "HD-GB3d", "XDR x6a"], "panel": "05", "zone": "compute", "type": "RW-25", "cabinets": [{"pos": 0, "cab": 41, "type": "T0-FE-v1a", "cat": "network"}, {"pos": 1, "cab": 42, "type": "HD-GB3d", "cat": "compute"}, {"pos": 2, "cab": 43, "type": "HD-GB3d", "cat": "compute"}, {"pos": 3, "cab": 44, "type": "HD-GB3d", "cat": "compute"}, {"pos": 4, "cab": 45, "type": "HD-GB3d", "cat": "compute"}, {"pos": 5, "cab": 46, "type": "HD-GB3d", "cat": "compute"}, {"pos": 6, "cab": 47, "type": "HD-GB3d", "cat": "compute"}, {"pos": 7, "cab": 48, "type": "HD-GB3d", "cat": "compute"}, {"pos": 8, "cab": 49, "type": "HD-GB3d", "cat": "compute"}, {"pos": 9, "cab": 50, "type": "XDR x6a", "cat": "network"}]}, {"row": 6, "cabs_lr": ["XDR x6a", "HD-GB3d", "HD-GB3d", "HD-GB3d", "HD-GB3d", "HD-GB3d", "HD-GB3d", "HD-GB3d", "HD-GB3d", "T0-FE-v1a"], "panel": "06", "zone": "compute", "type": "RW-25", "cabinets": [{"pos": 0, "cab": 60, "type": "XDR x6a", "cat": "network"}, {"pos": 1, "cab": 59, "type": "HD-GB3d", "cat": "compute"}, {"pos": 2, "cab": 58, "type": "HD-GB3d", "cat": "compute"}, {"pos": 3, "cab": 57, "type": "HD-GB3d", "cat": "compute"}, {"pos": 4, "cab": 56, "type": "HD-GB3d", "cat": "compute"}, {"pos": 5, "cab": 55, "type": "HD-GB3d", "cat": "compute"}, {"pos": 6, "cab": 54, "type": "HD-GB3d", "cat": "compute"}, {"pos": 7, "cab": 53, "type": "HD-GB3d", "cat": "compute"}, {"pos": 8, "cab": 52, "type": "HD-GB3d", "cat": "compute"}, {"pos": 9, "cab": 51, "type": "T0-FE-v1a", "cat": "network"}]}, {"row": 7, "cabs_lr": ["T1-FE-v5a", "CP5-v2a", "CP5-v2a", "CP5-v2a", "CP5-v2a", "CP5-v2a", "RES", "RES", "RES", "T2-FE-v1a"], "panel": "07", "zone": "grid-a", "type": "RK-26", "cabinets": [{"pos": 0, "cab": 61, "type": "T1-FE-v5a", "cat": "network"}, {"pos": 1, "cab": 62, "type": "CP5-v2a", "cat": "compute"}, {"pos": 2, "cab": 63, "type": "CP5-v2a", "cat": "compute"}, {"pos": 3, "cab": 64, "type": "CP5-v2a", "cat": "compute"}, {"pos": 4, "cab": 65, "type": "CP5-v2a", "cat": "compute"}, {"pos": 5, "cab": 66, "type": "CP5-v2a", "cat": "compute"}, {"pos": 6, "cab": 67, "type": "RES", "cat": "empty"}, {"pos": 7, "cab": 68, "type": "RES", "cat": "empty"}, {"pos": 8, "cab": 69, "type": "RES", "cat": "empty"}, {"pos": 9, "cab": 70, "type": "T2-FE-v1a", "cat": "network"}]}, {"row": 8, "cabs_lr": ["RES", "RES", "RES", "RES", "RES", "RES", "RES", "RES", "RES", "RES"], "panel": "08", "zone": "grid-a", "type": "RK-26", "cabinets": [{"pos": 0, "cab": 80, "type": "RES", "cat": "empty"}, {"pos": 1, "cab": 79, "type": "RES", "cat": "empty"}, {"pos": 2, "cab": 78, "type": "RES", "cat": "empty"}, {"pos": 3, "cab": 77, "type": "RES", "cat": "empty"}, {"pos": 4, "cab": 76, "type": "RES", "cat": "empty"}, {"pos": 5, "cab": 75, "type": "RES", "cat": "empty"}, {"pos": 6, "cab": 74, "type": "RES", "cat": "empty"}, {"pos": 7, "cab": 73, "type": "RES", "cat": "empty"}, {"pos": 8, "cab": 72, "type": "RES", "cat": "empty"}, {"pos": 9, "cab": 71, "type": "RES", "cat": "empty"}]}, {"row": 9, "cabs_lr": ["DPR-E1", "DPR-E2", "FCR-v3a1", "FCR-v3b", "RES"], "panel": null, "zone": "infra", "type": "RK-26", "cabinets": [{"pos": 0, "cab": 81, "type": "DPR-E1", "cat": "network"}, {"pos": 1, "cab": 82, "type": "DPR-E2", "cat": "network"}, {"pos": 2, "cab": 83, "type": "FCR-v3a1", "cat": "network"}, {"pos": 3, "cab": 84, "type": "FCR-v3b", "cat": "network"}, {"pos": 4, "cab": 85, "type": "RES", "cat": "empty"}]}, {"row": 10, "cabs_lr": ["PSCR", "PSCR", "RES", "RES", "RES"], "panel": null, "zone": "infra", "type": "RK-26", "cabinets": [{"pos": 0, "cab": 90, "type": "PSCR", "cat": "network"}, {"pos": 1, "cab": 89, "type": "PSCR", "cat": "network"}, {"pos": 2, "cab": 88, "type": "RES", "cat": "empty"}, {"pos": 3, "cab": 87, "type": "RES", "cat": "empty"}, {"pos": 4, "cab": 86, "type": "RES", "cat": "empty"}]}, {"row": 11, "cabs_lr": ["XDR x4a", "T2-FE-v2a", "T2-FE-v2b", "U", "U"], "panel": null, "zone": "infra", "type": "RK-26", "cabinets": [{"pos": 0, "cab": 91, "type": "XDR x4a", "cat": "network"}, {"pos": 1, "cab": 92, "type": "T2-FE-v2a", "cat": "network"}, {"pos": 2, "cab": 93, "type": "T2-FE-v2b", "cat": "network"}, {"pos": 3, "cab": 94, "type": "U", "cat": "empty"}, {"pos": 4, "cab": 95, "type": "U", "cat": "empty"}]}, {"row": 12, "cabs_lr": ["XDR x4a", "T2-FE-v2d", "T2-FE-v2c", "U", "U"], "panel": null, "zone": "infra", "type": "RK-26", "cabinets": [{"pos": 0, "cab": 100, "type": "XDR x4a", "cat": "network"}, {"pos": 1, "cab": 99, "type": "T2-FE-v2d", "cat": "network"}, {"pos": 2, "cab": 98, "type": "T2-FE-v2c", "cat": "network"}, {"pos": 3, "cab": 97, "type": "U", "cat": "empty"}, {"pos": 4, "cab": 96, "type": "U", "cat": "empty"}]}, {"row": 13, "cabs_lr": ["XDR x4b", "XDR x4a", "XDR x4a", "XDR x4a", "XDR x4a"], "panel": null, "zone": "infra", "type": "", "cabinets": [{"pos": 0, "cab": 101, "type": "XDR x4b", "cat": "network"}, {"pos": 1, "cab": 102, "type": "XDR x4a", "cat": "network"}, {"pos": 2, "cab": 103, "type": "XDR x4a", "cat": "network"}, {"pos": 3, "cab": 104, "type": "XDR x4a", "cat": "network"}, {"pos": 4, "cab": 105, "type": "XDR x4a", "cat": "network"}]}, {"row": 14, "cabs_lr": ["XDR x4a", "XDR x4a", "XDR x4a", "XDR x4a", "XDR x4a"], "panel": null, "zone": "infra", "type": "", "cabinets": [{"pos": 0, "cab": 110, "type": "XDR x4a", "cat": "network"}, {"pos": 1, "cab": 109, "type": "XDR x4a", "cat": "network"}, {"pos": 2, "cab": 108, "type": "XDR x4a", "cat": "network"}, {"pos": 3, "cab": 107, "type": "XDR x4a", "cat": "network"}, {"pos": 4, "cab": 106, "type": "XDR x4a", "cat": "network"}]}, {"row": 15, "cabs_lr": ["T3-E-v3a", "T3-E-v3b", "T3-E-v3c", "T3-E-v3d", "T3-E-v3e"], "panel": null, "zone": "infra", "type": "", "cabinets": [{"pos": 0, "cab": 111, "type": "T3-E-v3a", "cat": "network"}, {"pos": 1, "cab": 112, "type": "T3-E-v3b", "cat": "network"}, {"pos": 2, "cab": 113, "type": "T3-E-v3c", "cat": "network"}, {"pos": 3, "cab": 114, "type": "T3-E-v3d", "cat": "network"}, {"pos": 4, "cab": 115, "type": "T3-E-v3e", "cat": "network"}]}, {"row": 16, "cabs_lr": ["RES", "RES", "RES", "RES", "T3-E-v3f"], "panel": null, "zone": "infra", "type": "", "cabinets": [{"pos": 0, "cab": 120, "type": "RES", "cat": "empty"}, {"pos": 1, "cab": 119, "type": "RES", "cat": "empty"}, {"pos": 2, "cab": 118, "type": "RES", "cat": "empty"}, {"pos": 3, "cab": 117, "type": "RES", "cat": "empty"}, {"pos": 4, "cab": 116, "type": "T3-E-v3f", "cat": "network"}]}];
+
+// Panel definitions
+// Each row with panel N → PNL-IRC-1C-NN (Feed C, orange) + PNL-IRC-2D-NN (Feed D, blue)
+const FEED_C_COLOR = '#FF9800';
+const FEED_D_COLOR = '#2196F3';
+const FEED_E_COLORS = {'1E':'#22c55e','2E':'#a855f7','3E':'#f43f5e','4E':'#06b6d4'};
+
+// E-feed node data (rows 1–2 only; UPS feeds 1E–4E)
+const DH2_NODES = [{"serial": "MT2541600FP1", "row": 1, "cab": 1, "u": 1, "ups": ["1E", "2E"], "busways": ["1E-01-01", "2E-01-01"]}, {"serial": "MT2541600FNK", "row": 1, "cab": 1, "u": 4, "ups": ["1E", "2E"], "busways": ["1E-01-01", "2E-01-01"]}, {"serial": "MT25406014X8", "row": 1, "cab": 1, "u": 7, "ups": ["1E", "2E"], "busways": ["1E-01-01", "2E-01-01"]}, {"serial": "MT25406016X6", "row": 1, "cab": 1, "u": 10, "ups": ["1E", "2E"], "busways": ["1E-01-01", "2E-01-01"]}, {"serial": "MT2541600FNL", "row": 1, "cab": 1, "u": 13, "ups": ["1E", "2E"], "busways": ["1E-01-01", "2E-01-01"]}, {"serial": "MT2541600FP2", "row": 1, "cab": 1, "u": 16, "ups": ["1E", "2E"], "busways": ["1E-01-01", "2E-01-01"]}, {"serial": "MT2540603K40", "row": 1, "cab": 1, "u": 19, "ups": ["1E", "2E"], "busways": ["1E-01-01", "2E-01-01"]}, {"serial": "MT25406014QK", "row": 1, "cab": 1, "u": 22, "ups": ["1E", "2E"], "busways": ["1E-01-01", "2E-01-01"]}, {"serial": "MT2540603K3Z", "row": 1, "cab": 1, "u": 25, "ups": ["1E", "2E"], "busways": ["1E-01-01", "2E-01-01"]}, {"serial": "MT2451J0018Y", "row": 1, "cab": 1, "u": 28, "ups": ["1E", "2E"], "busways": ["1E-01-01", "2E-01-01"]}, {"serial": "MT2450J01FL8", "row": 1, "cab": 1, "u": 30, "ups": ["1E", "2E"], "busways": ["1E-01-01", "2E-01-01"]}, {"serial": "MT2450J01FKM", "row": 1, "cab": 1, "u": 32, "ups": ["1E", "2E"], "busways": ["1E-01-01", "2E-01-01"]}, {"serial": "MT2450J01FLB", "row": 1, "cab": 1, "u": 34, "ups": ["1E", "2E"], "busways": ["1E-01-01", "2E-01-01"]}, {"serial": "MT25406014KP", "row": 1, "cab": 1, "u": 36, "ups": ["1E", "2E"], "busways": ["1E-01-01", "2E-01-01"]}, {"serial": "MT2541600TBG", "row": 1, "cab": 1, "u": 39, "ups": ["1E", "2E"], "busways": ["1E-01-01", "2E-01-01"]}, {"serial": "MT2403200113", "row": 1, "cab": 1, "u": 42, "ups": ["1E", "2E"], "busways": ["1E-01-01", "2E-01-01"]}, {"serial": "MT2403200121", "row": 1, "cab": 1, "u": 44, "ups": ["1E", "2E"], "busways": ["1E-01-01", "2E-01-01"]}, {"serial": "MT2405200336", "row": 1, "cab": 1, "u": 45, "ups": ["1E", "2E"], "busways": ["1E-01-01", "2E-01-01"]}, {"serial": "MT2405200111", "row": 1, "cab": 1, "u": 46, "ups": ["1E", "2E"], "busways": ["1E-01-01", "2E-01-01"]}, {"serial": "81482509348923", "row": 1, "cab": 1, "u": 48, "ups": ["1E", "2E"], "busways": ["1E-01-01", "2E-01-01"]}, {"serial": "77GP1H4", "row": 1, "cab": 2, "u": "", "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "0511202500LV", "row": 1, "cab": 2, "u": 1, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "TH0M18F3DEHDN59O1042", "row": 1, "cab": 2, "u": 6, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "TH0M18F3DEHDN59O1041", "row": 1, "cab": 2, "u": 7, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "TH0M18F3DEHDN59O1043", "row": 1, "cab": 2, "u": 8, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "TH0M18F3DEHDN59O1034", "row": 1, "cab": 2, "u": 9, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "5105NB4", "row": 1, "cab": 2, "u": 11, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "4405NB4", "row": 1, "cab": 2, "u": 12, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "C005NB4", "row": 1, "cab": 2, "u": 13, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "4105NB4", "row": 1, "cab": 2, "u": 14, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "9205NB4", "row": 1, "cab": 2, "u": 15, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "7405NB4", "row": 1, "cab": 2, "u": 16, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "H105NB4", "row": 1, "cab": 2, "u": 17, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "3105NB4", "row": 1, "cab": 2, "u": 18, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "MT2545600EFK", "row": 1, "cab": 2, "u": 19, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "MT2545600EDU", "row": 1, "cab": 2, "u": 20, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "MT2545600EDP", "row": 1, "cab": 2, "u": 21, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "MT2545600EE3", "row": 1, "cab": 2, "u": 22, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "MT2545600EE2", "row": 1, "cab": 2, "u": 23, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "MT25456005Z3", "row": 1, "cab": 2, "u": 24, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "MT2545600EE5", "row": 1, "cab": 2, "u": 25, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "MT2545600EDM", "row": 1, "cab": 2, "u": 26, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "MT2545600EDQ", "row": 1, "cab": 2, "u": 27, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "6005NB4", "row": 1, "cab": 2, "u": 28, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "2305NB4", "row": 1, "cab": 2, "u": 29, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "B305NB4", "row": 1, "cab": 2, "u": 30, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "G105NB4", "row": 1, "cab": 2, "u": 31, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "F305NB4", "row": 1, "cab": 2, "u": 32, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "H005NB4", "row": 1, "cab": 2, "u": 33, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "D105NB4", "row": 1, "cab": 2, "u": 34, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "BXZ4NB4", "row": 1, "cab": 2, "u": 35, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "C105NB4", "row": 1, "cab": 2, "u": 36, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "6205NB4", "row": 1, "cab": 2, "u": 37, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "TH0M18F3DEHDN59O1044", "row": 1, "cab": 2, "u": 40, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "TH0M18F3DEHDN5A60971", "row": 1, "cab": 2, "u": 41, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "TH0M18F3DEHDN59O1045", "row": 1, "cab": 2, "u": 42, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "TH0M18F3DEHDN59O1051", "row": 1, "cab": 2, "u": 43, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "TW0J2MV9DNT005982681", "row": 1, "cab": 2, "u": 46, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "TW0J2MV9DNT005982662", "row": 1, "cab": 2, "u": 47, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "J6GP1H4", "row": 1, "cab": 3, "u": "", "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "0511202500PB", "row": 1, "cab": 3, "u": 1, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "TH0M18F3DEHDN59O1025", "row": 1, "cab": 3, "u": 6, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "TH0M18F3DEHDN59O1027", "row": 1, "cab": 3, "u": 7, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "TH0M18F3DEHDN59O1018", "row": 1, "cab": 3, "u": 8, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "TH0M18F3DEHDN59O1020", "row": 1, "cab": 3, "u": 9, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "1805NB4", "row": 1, "cab": 3, "u": 11, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "9405NB4", "row": 1, "cab": 3, "u": 12, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "4MJ3NB4", "row": 1, "cab": 3, "u": 13, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "J8X4NB4", "row": 1, "cab": 3, "u": 14, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "4GX4NB4", "row": 1, "cab": 3, "u": 15, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "28X4NB4", "row": 1, "cab": 3, "u": 16, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "27X4NB4", "row": 1, "cab": 3, "u": 17, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "26X4NB4", "row": 1, "cab": 3, "u": 18, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "MT2547603P39", "row": 1, "cab": 3, "u": 19, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "MT2547603P9T", "row": 1, "cab": 3, "u": 20, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "MT2547601VBJ", "row": 1, "cab": 3, "u": 21, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "MT2547603P7Z", "row": 1, "cab": 3, "u": 22, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "MT2547603P9G", "row": 1, "cab": 3, "u": 23, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "MT2546602TZD", "row": 1, "cab": 3, "u": 24, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "MT2547603P7R", "row": 1, "cab": 3, "u": 25, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "MT2547601VAQ", "row": 1, "cab": 3, "u": 26, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "MT2547603P8Y", "row": 1, "cab": 3, "u": 27, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "37X4NB4", "row": 1, "cab": 3, "u": 28, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "J9X4NB4", "row": 1, "cab": 3, "u": 29, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "GGX4NB4", "row": 1, "cab": 3, "u": 30, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "D8X4NB4", "row": 1, "cab": 3, "u": 31, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "D7X4NB4", "row": 1, "cab": 3, "u": 32, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "49X4NB4", "row": 1, "cab": 3, "u": 33, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "HFX4NB4", "row": 1, "cab": 3, "u": 34, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "1FX4NB4", "row": 1, "cab": 3, "u": 35, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "DGX4NB4", "row": 1, "cab": 3, "u": 36, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "66X4NB4", "row": 1, "cab": 3, "u": 37, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "TH0M18F3DEHDN59O1024", "row": 1, "cab": 3, "u": 40, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "TH0M18F3DEHDN59O1029", "row": 1, "cab": 3, "u": 41, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "TH0M18F3DEHDN59O0037", "row": 1, "cab": 3, "u": 42, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "TH0M18F3DEHDN59O0050", "row": 1, "cab": 3, "u": 43, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "TW0J2MV9DNT005982883", "row": 1, "cab": 3, "u": 46, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "TW0J2MV9DNT005982172", "row": 1, "cab": 3, "u": 47, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "17GP1H4", "row": 1, "cab": 4, "u": "", "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "0511202500JC", "row": 1, "cab": 4, "u": 1, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "TH0M18F3DEHDN59O1489", "row": 1, "cab": 4, "u": 6, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "TH0M18F3DEHDN59O0177", "row": 1, "cab": 4, "u": 7, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "TH0M18F3DEHDN59O0172", "row": 1, "cab": 4, "u": 8, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "TH0M18F3DEHDN59O0171", "row": 1, "cab": 4, "u": 9, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "5XZ4NB4", "row": 1, "cab": 4, "u": 11, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "FXZ4NB4", "row": 1, "cab": 4, "u": 12, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "CXZ4NB4", "row": 1, "cab": 4, "u": 13, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "6XZ4NB4", "row": 1, "cab": 4, "u": 14, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "2XZ4NB4", "row": 1, "cab": 4, "u": 15, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "GJX4NB4", "row": 1, "cab": 4, "u": 16, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "3KX4NB4", "row": 1, "cab": 4, "u": 17, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "JJX4NB4", "row": 1, "cab": 4, "u": 18, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "MT2546602YDJ", "row": 1, "cab": 4, "u": 19, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "MT2546602YDC", "row": 1, "cab": 4, "u": 20, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "MT2546602YD8", "row": 1, "cab": 4, "u": 21, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "MT2546602YB6", "row": 1, "cab": 4, "u": 22, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "MT2546602YDH", "row": 1, "cab": 4, "u": 23, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "MT2546602YB3", "row": 1, "cab": 4, "u": 24, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "MT2546602YB4", "row": 1, "cab": 4, "u": 25, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "MT2546602YB9", "row": 1, "cab": 4, "u": 26, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "MT2546602YBE", "row": 1, "cab": 4, "u": 27, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "DBX4NB4", "row": 1, "cab": 4, "u": 28, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "39X4NB4", "row": 1, "cab": 4, "u": 29, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "F105NB4", "row": 1, "cab": 4, "u": 30, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "J105NB4", "row": 1, "cab": 4, "u": 31, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "4CX4NB4", "row": 1, "cab": 4, "u": 32, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "CBX4NB4", "row": 1, "cab": 4, "u": 33, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "7D05NB4", "row": 1, "cab": 4, "u": 34, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "39T4NB4", "row": 1, "cab": 4, "u": 35, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "HBT4NB4", "row": 1, "cab": 4, "u": 36, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "7XS4NB4", "row": 1, "cab": 4, "u": 37, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "TH0M18F3DEHDN59O0165", "row": 1, "cab": 4, "u": 40, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "TH0M18F3DEHDN59O0169", "row": 1, "cab": 4, "u": 41, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "TH0M18F3DEHDN59O1473", "row": 1, "cab": 4, "u": 42, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "TH0M18F3DEHDN59O0167", "row": 1, "cab": 4, "u": 43, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "TW0J2MV9DNT005982268", "row": 1, "cab": 4, "u": 46, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "TW0J2MV9DNT005982114", "row": 1, "cab": 4, "u": 47, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "G6GP1H4", "row": 1, "cab": 5, "u": "", "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "0511202500J8", "row": 1, "cab": 5, "u": 1, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "TH0M18F3DEHDN59T1154", "row": 1, "cab": 5, "u": 6, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "TH0M18F3DEHDN59T1184", "row": 1, "cab": 5, "u": 7, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "TH0M18F3DEHDN59T1158", "row": 1, "cab": 5, "u": 8, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "TH0M18F3DEHDN59T1163", "row": 1, "cab": 5, "u": 9, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "8205NB4", "row": 1, "cab": 5, "u": 11, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "3005NB4", "row": 1, "cab": 5, "u": 12, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "9HX4NB4", "row": 1, "cab": 5, "u": 13, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "98X4NB4", "row": 1, "cab": 5, "u": 14, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "6ZZ4NB4", "row": 1, "cab": 5, "u": 15, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "6C05NB4", "row": 1, "cab": 5, "u": 16, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "1JX4NB4", "row": 1, "cab": 5, "u": 17, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "DWZ4NB4", "row": 1, "cab": 5, "u": 18, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "MT2547601V6Q", "row": 1, "cab": 5, "u": 19, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "MT2547601V7J", "row": 1, "cab": 5, "u": 20, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "MT2547601V7U", "row": 1, "cab": 5, "u": 21, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "MT2547601V7A", "row": 1, "cab": 5, "u": 22, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "MT2546602YEP", "row": 1, "cab": 5, "u": 23, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "MT2547601V7R", "row": 1, "cab": 5, "u": 24, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "MT2547601V7X", "row": 1, "cab": 5, "u": 25, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "MT2546602M0L", "row": 1, "cab": 5, "u": 26, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "MT2547601V7N", "row": 1, "cab": 5, "u": 27, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "DG33NB4", "row": 1, "cab": 5, "u": 28, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "7B05NB4", "row": 1, "cab": 5, "u": 29, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "79X4NB4", "row": 1, "cab": 5, "u": 30, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "F005NB4", "row": 1, "cab": 5, "u": 31, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "1105NB4", "row": 1, "cab": 5, "u": 32, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "BCX4NB4", "row": 1, "cab": 5, "u": 33, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "5GX4NB4", "row": 1, "cab": 5, "u": 34, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "B005NB4", "row": 1, "cab": 5, "u": 35, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "1605NB4", "row": 1, "cab": 5, "u": 36, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "H305NB4", "row": 1, "cab": 5, "u": 37, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "TH0M18F3DEHDN59T1171", "row": 1, "cab": 5, "u": 40, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "TH0M18F3DEHDN59T1149", "row": 1, "cab": 5, "u": 41, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "TH0M18F3DEHDN59T1176", "row": 1, "cab": 5, "u": 42, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "TH0M18F3DEHDN59T1178", "row": 1, "cab": 5, "u": 43, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "TW0J2MV9DNT005982658", "row": 1, "cab": 5, "u": 46, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "TW0J2MV9DNT005982327", "row": 1, "cab": 5, "u": 47, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "H6GP1H4", "row": 1, "cab": 6, "u": "", "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "0511202500MF", "row": 1, "cab": 6, "u": 1, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "TH0M18F3DEHDN59O1495", "row": 1, "cab": 6, "u": 6, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "TH0M18F3DEHDN59O0202", "row": 1, "cab": 6, "u": 7, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "TH0M18F3DEHDN59O0201", "row": 1, "cab": 6, "u": 8, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "TH0M18F3DEHDN59O0208", "row": 1, "cab": 6, "u": 9, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "21G4NB4", "row": 1, "cab": 6, "u": 11, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "31G4NB4", "row": 1, "cab": 6, "u": 12, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "7ZF4NB4", "row": 1, "cab": 6, "u": 13, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "22G4NB4", "row": 1, "cab": 6, "u": 14, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "DY34NB4", "row": 1, "cab": 6, "u": 15, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "BX34NB4", "row": 1, "cab": 6, "u": 16, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "2ZF4NB4", "row": 1, "cab": 6, "u": 17, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "C2G4NB4", "row": 1, "cab": 6, "u": 18, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "MT2547603PA6", "row": 1, "cab": 6, "u": 19, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "MT2547603P23", "row": 1, "cab": 6, "u": 20, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "MT254760301V", "row": 1, "cab": 6, "u": 21, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "MT2547603P86", "row": 1, "cab": 6, "u": 22, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "MT2547603P1V", "row": 1, "cab": 6, "u": 23, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "MT2547603P6X", "row": 1, "cab": 6, "u": 24, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "MT2547603P1U", "row": 1, "cab": 6, "u": 25, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "MT2547603P3P", "row": 1, "cab": 6, "u": 26, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "MT2547603P8X", "row": 1, "cab": 6, "u": 27, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "1GX4NB4", "row": 1, "cab": 6, "u": 28, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "3BX4NB4", "row": 1, "cab": 6, "u": 29, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "48X4NB4", "row": 1, "cab": 6, "u": 30, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "5305NB4", "row": 1, "cab": 6, "u": 31, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "H5X4NB4", "row": 1, "cab": 6, "u": 32, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "GFX4NB4", "row": 1, "cab": 6, "u": 33, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "78X4NB4", "row": 1, "cab": 6, "u": 34, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "H605NB4", "row": 1, "cab": 6, "u": 35, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "16X4NB4", "row": 1, "cab": 6, "u": 36, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "G405NB4", "row": 1, "cab": 6, "u": 37, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "TH0M18F3DEHDN59O0207", "row": 1, "cab": 6, "u": 40, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "TH0M18F3DEHDN59O0203", "row": 1, "cab": 6, "u": 41, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "TH0M18F3DEHDN59O0200", "row": 1, "cab": 6, "u": 42, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "TH0M18F3DEHDN59O0209", "row": 1, "cab": 6, "u": 43, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "TW0J2MV9DNT005982664", "row": 1, "cab": 6, "u": 46, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "TW0J2MV9DNT005982630", "row": 1, "cab": 6, "u": 47, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "47GP1H4", "row": 1, "cab": 7, "u": "", "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "0511202500JK", "row": 1, "cab": 7, "u": 1, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "TH0M18F3DEHDN58P2091", "row": 1, "cab": 7, "u": 6, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "TH0M18F3DEHDN58P2092", "row": 1, "cab": 7, "u": 7, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "TH0M18F3DEHDN58P2093", "row": 1, "cab": 7, "u": 8, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "TH0M18F3DEHDN58P2083", "row": 1, "cab": 7, "u": 9, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "2BX4NB4", "row": 1, "cab": 7, "u": 11, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "B205NB4", "row": 1, "cab": 7, "u": 12, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "89X4NB4", "row": 1, "cab": 7, "u": 13, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "HHX4NB4", "row": 1, "cab": 7, "u": 14, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "2705NB4", "row": 1, "cab": 7, "u": 15, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "4KXHCC4", "row": 1, "cab": 7, "u": 16, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "3305NB4", "row": 1, "cab": 7, "u": 17, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "4JX4NB4", "row": 1, "cab": 7, "u": 18, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "MT2547603PBL", "row": 1, "cab": 7, "u": 19, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "MT2547603PEN", "row": 1, "cab": 7, "u": 20, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "MT2547601V7D", "row": 1, "cab": 7, "u": 21, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "MT2547601QWL", "row": 1, "cab": 7, "u": 22, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "MT2547601R1Y", "row": 1, "cab": 7, "u": 23, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "MT2547601QWK", "row": 1, "cab": 7, "u": 24, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "MT2547601V6K", "row": 1, "cab": 7, "u": 25, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "MT2547601R04", "row": 1, "cab": 7, "u": 26, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "MT2547601QWE", "row": 1, "cab": 7, "u": 27, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "6805NB4", "row": 1, "cab": 7, "u": 28, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "G205NB4", "row": 1, "cab": 7, "u": 29, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "9305NB4", "row": 1, "cab": 7, "u": 30, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "B6X4NB4", "row": 1, "cab": 7, "u": 31, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "GB05NB4", "row": 1, "cab": 7, "u": 32, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "D905NB4", "row": 1, "cab": 7, "u": 33, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "7GX4NB4", "row": 1, "cab": 7, "u": 34, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "DXZ4NB4", "row": 1, "cab": 7, "u": 35, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "HB05NB4", "row": 1, "cab": 7, "u": 36, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "8B05NB4", "row": 1, "cab": 7, "u": 37, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "TH0M18F3DEHDN58P2053", "row": 1, "cab": 7, "u": 40, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "TH0M18F3DEHDN58P2089", "row": 1, "cab": 7, "u": 41, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "TH0M18F3DEHDN58P2051", "row": 1, "cab": 7, "u": 42, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "TH0M18F3DEHDN58P2052", "row": 1, "cab": 7, "u": 43, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "TW0J2MV9DNT005982278", "row": 1, "cab": 7, "u": 46, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "TW0J2MV9DNT005982139", "row": 1, "cab": 7, "u": 47, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "76GP1H4", "row": 1, "cab": 8, "u": "", "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "0511112025009C", "row": 1, "cab": 8, "u": 1, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "TH0M18F3DEHDN58P1736", "row": 1, "cab": 8, "u": 6, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "TH0M18F3DEHDN58P1789", "row": 1, "cab": 8, "u": 7, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "TH0M18F3DEHDN58P1739", "row": 1, "cab": 8, "u": 8, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "TH0M18F3DEHDN58P1740", "row": 1, "cab": 8, "u": 9, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "C205NB4", "row": 1, "cab": 8, "u": 11, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "3B05NB4", "row": 1, "cab": 8, "u": 12, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "F905NB4", "row": 1, "cab": 8, "u": 13, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "9DX4NB4", "row": 1, "cab": 8, "u": 14, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "2JX4NB4", "row": 1, "cab": 8, "u": 15, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "7BX4NB4", "row": 1, "cab": 8, "u": 16, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "38X4NB4", "row": 1, "cab": 8, "u": 17, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "3YZ4NB4", "row": 1, "cab": 8, "u": 18, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "MT2547603072", "row": 1, "cab": 8, "u": 19, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "MT254760300W", "row": 1, "cab": 8, "u": 20, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "MT25476030C9", "row": 1, "cab": 8, "u": 21, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "MT25476030KH", "row": 1, "cab": 8, "u": 22, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "MT2547602ZZF", "row": 1, "cab": 8, "u": 23, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "MT2547602ZZ3", "row": 1, "cab": 8, "u": 24, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "MT254760300X", "row": 1, "cab": 8, "u": 25, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "MT2547603073", "row": 1, "cab": 8, "u": 26, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "MT2547602ZZH", "row": 1, "cab": 8, "u": 27, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "H405NB4", "row": 1, "cab": 8, "u": 28, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "96X4NB4", "row": 1, "cab": 8, "u": 29, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "90G4NB4", "row": 1, "cab": 8, "u": 30, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "JYZ4NB4", "row": 1, "cab": 8, "u": 31, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "G705NB4", "row": 1, "cab": 8, "u": 32, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "1ZZ4NB4", "row": 1, "cab": 8, "u": 33, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "G505NB4", "row": 1, "cab": 8, "u": 34, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "6605NB4", "row": 1, "cab": 8, "u": 35, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "5505NB4", "row": 1, "cab": 8, "u": 36, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "JCX4NB4", "row": 1, "cab": 8, "u": 37, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "TH0M18F3DEHDN58P1738", "row": 1, "cab": 8, "u": 40, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "TH0M18F3DEHDN58P1622", "row": 1, "cab": 8, "u": 41, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "TH0M18F3DEHDN58P1531", "row": 1, "cab": 8, "u": 42, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "TH0M18F3DEHDN58P1735", "row": 1, "cab": 8, "u": 43, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "TW0J2MV9DNT005982376", "row": 1, "cab": 8, "u": 46, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "TW0J2MV9DNT005982108", "row": 1, "cab": 8, "u": 47, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "87GP1H4", "row": 1, "cab": 9, "u": "", "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "0511202500I8", "row": 1, "cab": 9, "u": 1, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "TH0M18F3DEHDN59T0586", "row": 1, "cab": 9, "u": 6, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "TH0M18F3DEHDN59T0521", "row": 1, "cab": 9, "u": 7, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "TH0M18F3DEHDN59T0583", "row": 1, "cab": 9, "u": 8, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "TH0M18F3DEHDN59T0582", "row": 1, "cab": 9, "u": 9, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "JD15NB4", "row": 1, "cab": 9, "u": 11, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "CF15NB4", "row": 1, "cab": 9, "u": 12, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "HF15NB4", "row": 1, "cab": 9, "u": 13, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "FBX4NB4", "row": 1, "cab": 9, "u": 14, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "5005NB4", "row": 1, "cab": 9, "u": 15, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "CH05NB4", "row": 1, "cab": 9, "u": 16, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "1DX4NB4", "row": 1, "cab": 9, "u": 17, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "1T15NB4", "row": 1, "cab": 9, "u": 18, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "MT2547601VAH", "row": 1, "cab": 9, "u": 19, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "MT2547601VB5", "row": 1, "cab": 9, "u": 20, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "MT2547601VB9", "row": 1, "cab": 9, "u": 21, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "MT2547601VBE", "row": 1, "cab": 9, "u": 22, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "MT2547601VAR", "row": 1, "cab": 9, "u": 23, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "MT2547603PEW", "row": 1, "cab": 9, "u": 24, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "MT2547603PEP", "row": 1, "cab": 9, "u": 25, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "MT25476030BA", "row": 1, "cab": 9, "u": 26, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "MT2546602YEV", "row": 1, "cab": 9, "u": 27, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "3GX4NB4", "row": 1, "cab": 9, "u": 28, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "GHX4NB4", "row": 1, "cab": 9, "u": 29, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "F5X4NB4", "row": 1, "cab": 9, "u": 30, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "8HX4NB4", "row": 1, "cab": 9, "u": 31, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "6DX4NB4", "row": 1, "cab": 9, "u": 32, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "B605NB4", "row": 1, "cab": 9, "u": 33, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "HXZ4NB4", "row": 1, "cab": 9, "u": 34, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "9GX4NB4", "row": 1, "cab": 9, "u": 35, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "FHX4NB4", "row": 1, "cab": 9, "u": 36, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "G9X4NB4", "row": 1, "cab": 9, "u": 37, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "TH0M18F3DEHDN59T0587", "row": 1, "cab": 9, "u": 40, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "TH0M18F3DEHDN59T0676", "row": 1, "cab": 9, "u": 41, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "TH0M18F3DEHDN59T0590", "row": 1, "cab": 9, "u": 42, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "TH0M18F3DEHDN59T0593", "row": 1, "cab": 9, "u": 43, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "TW0J2MV9DNT005982269", "row": 1, "cab": 9, "u": 46, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "TW0J2MV9DNT005982799", "row": 1, "cab": 9, "u": 47, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "MT2538J02KZL", "row": 1, "cab": 10, "u": 7, "ups": ["3E", "4E"], "busways": ["4E-01-01"]}, {"serial": "MT2538J02KZM", "row": 1, "cab": 10, "u": 12, "ups": ["3E", "4E"], "busways": ["4E-01-01"]}, {"serial": "MT2538J02G4L", "row": 1, "cab": 10, "u": 17, "ups": ["3E", "4E"], "busways": ["4E-01-01"]}, {"serial": "MT2538J02KY5", "row": 1, "cab": 10, "u": 22, "ups": ["3E", "4E"], "busways": ["4E-01-01"]}, {"serial": "MT2538J02G61", "row": 1, "cab": 10, "u": 27, "ups": ["3E", "4E"], "busways": ["4E-01-01"]}, {"serial": "MT2538J02KV5", "row": 1, "cab": 10, "u": 32, "ups": ["3E", "4E"], "busways": ["4E-01-01"]}, {"serial": "MT2451J001AJ", "row": 2, "cab": 11, "u": 28, "ups": ["1E", "2E"], "busways": ["1E-01-02", "2E-01-02"]}, {"serial": "MT2450J01FKU", "row": 2, "cab": 11, "u": 30, "ups": ["1E", "2E"], "busways": ["1E-01-02", "2E-01-02"]}, {"serial": "MT25406018XZ", "row": 2, "cab": 11, "u": 36, "ups": ["1E", "2E"], "busways": ["1E-01-02", "2E-01-02"]}, {"serial": "MT25426005W9", "row": 2, "cab": 11, "u": 39, "ups": ["1E", "2E"], "busways": ["1E-01-02", "2E-01-02"]}, {"serial": "MT2405200373", "row": 2, "cab": 11, "u": 42, "ups": ["1E", "2E"], "busways": ["1E-01-02", "2E-01-02"]}, {"serial": "MT2405200562", "row": 2, "cab": 11, "u": 44, "ups": ["1E", "2E"], "busways": ["1E-01-02", "2E-01-02"]}, {"serial": "MT2529201271", "row": 2, "cab": 11, "u": 46, "ups": ["1E", "2E"], "busways": ["1E-01-02", "2E-01-02"]}, {"serial": "81482509348892", "row": 2, "cab": 11, "u": 48, "ups": ["1E", "2E"], "busways": ["1E-01-02", "2E-01-02"]}, {"serial": "C6GP1H4", "row": 2, "cab": 12, "u": "", "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "051111202500A4", "row": 2, "cab": 12, "u": 1, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-02", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "TH0M18F3DEHDN59O1295", "row": 2, "cab": 12, "u": 6, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-02", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "TH0M18F3DEHDN59O1297", "row": 2, "cab": 12, "u": 7, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "TH0M18F3DEHDN59O1375", "row": 2, "cab": 12, "u": 8, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "TH0M18F3DEHDN59O0136", "row": 2, "cab": 12, "u": 9, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "GC05NB4", "row": 2, "cab": 12, "u": 11, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "8305NB4", "row": 2, "cab": 12, "u": 12, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "HZZ4NB4", "row": 2, "cab": 12, "u": 13, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "FD05NB4", "row": 2, "cab": 12, "u": 14, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "3705NB4", "row": 2, "cab": 12, "u": 15, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "6705NB4", "row": 2, "cab": 12, "u": 16, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "1N05NB4", "row": 2, "cab": 12, "u": 17, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "2N05NB4", "row": 2, "cab": 12, "u": 18, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "MT2546601PZK", "row": 2, "cab": 12, "u": 19, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "MT2546601NEP", "row": 2, "cab": 12, "u": 20, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "MT2546602M2F", "row": 2, "cab": 12, "u": 21, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "MT2546601P22", "row": 2, "cab": 12, "u": 22, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "MT2546601PZJ", "row": 2, "cab": 12, "u": 23, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "MT2546602M2G", "row": 2, "cab": 12, "u": 24, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "MT2546602M2Q", "row": 2, "cab": 12, "u": 25, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "MT2546602M2L", "row": 2, "cab": 12, "u": 26, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "MT2546602M29", "row": 2, "cab": 12, "u": 27, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "1G15NB4", "row": 2, "cab": 12, "u": 28, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "D605NB4", "row": 2, "cab": 12, "u": 29, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "CC15NB4", "row": 2, "cab": 12, "u": 30, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "4L05NB4", "row": 2, "cab": 12, "u": 31, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "6F15NB4", "row": 2, "cab": 12, "u": 32, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "FL05NB4", "row": 2, "cab": 12, "u": 33, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "CD15NB4", "row": 2, "cab": 12, "u": 34, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "8L05NB4", "row": 2, "cab": 12, "u": 35, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "GH05NB4", "row": 2, "cab": 12, "u": 36, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "51G4NB4", "row": 2, "cab": 12, "u": 37, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "TH0M18F3DEHDN59O0140", "row": 2, "cab": 12, "u": 40, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "TH0M18F3DEHDN59O1331", "row": 2, "cab": 12, "u": 41, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "TH0M18F3DEHDN59O1388", "row": 2, "cab": 12, "u": 42, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "TH0M18F3DEHDN59O0137", "row": 2, "cab": 12, "u": 43, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "TW0J2MV9DNT0057E2555", "row": 2, "cab": 12, "u": 46, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "TW0J2MV9DNT0057E2483", "row": 2, "cab": 12, "u": 47, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "27GP1H4", "row": 2, "cab": 13, "u": "", "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "051111202500AC", "row": 2, "cab": 13, "u": 1, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "TH0M18F3DEHDN5AS0504", "row": 2, "cab": 13, "u": 6, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "TH0M18F3DEHDN5AS0499", "row": 2, "cab": 13, "u": 7, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "TH0M18F3DEHDN5AS0286", "row": 2, "cab": 13, "u": 8, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "TH0M18F3DEHDN5AS0508", "row": 2, "cab": 13, "u": 9, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "HH05NB4", "row": 2, "cab": 13, "u": 11, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "32G4NB4", "row": 2, "cab": 13, "u": 12, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "4ZF4NB4", "row": 2, "cab": 13, "u": 13, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "F0G4NB4", "row": 2, "cab": 13, "u": 14, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "5M15NB4", "row": 2, "cab": 13, "u": 15, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "JM15NB4", "row": 2, "cab": 13, "u": 16, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "DH15NB4", "row": 2, "cab": 13, "u": 17, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "4N05NB4", "row": 2, "cab": 13, "u": 18, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "MT2547601VF6", "row": 2, "cab": 13, "u": 19, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "MT2547601QZZ", "row": 2, "cab": 13, "u": 20, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "MT2547601VF3", "row": 2, "cab": 13, "u": 21, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "MT2547601R6X", "row": 2, "cab": 13, "u": 22, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "MT2547601VFZ", "row": 2, "cab": 13, "u": 23, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "MT2547603NLJ", "row": 2, "cab": 13, "u": 24, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "MT2547601VF9", "row": 2, "cab": 13, "u": 25, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "MT2547603NLE", "row": 2, "cab": 13, "u": 26, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "MT2547603NM3", "row": 2, "cab": 13, "u": 27, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "BQ15NB4", "row": 2, "cab": 13, "u": 28, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "GK05NB4", "row": 2, "cab": 13, "u": 29, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "4C15NB4", "row": 2, "cab": 13, "u": 30, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "HZF4NB4", "row": 2, "cab": 13, "u": 31, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "6YF4NB4", "row": 2, "cab": 13, "u": 32, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "6J05NB4", "row": 2, "cab": 13, "u": 33, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "GB15NB4", "row": 2, "cab": 13, "u": 34, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "6G15NB4", "row": 2, "cab": 13, "u": 35, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "JC15NB4", "row": 2, "cab": 13, "u": 36, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "BYF4NB4", "row": 2, "cab": 13, "u": 37, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "TH0M18F3DEHDN5AS0518", "row": 2, "cab": 13, "u": 40, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "TH0M18F3DEHDN5AS0404", "row": 2, "cab": 13, "u": 41, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "TH0M18F3DEHDN5AS0304", "row": 2, "cab": 13, "u": 42, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "TH0M18F3DEHDN5AS0431", "row": 2, "cab": 13, "u": 43, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "TW0J2MV9DNT005982289", "row": 2, "cab": 13, "u": 46, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "TW0J2MV9DNT005982617", "row": 2, "cab": 13, "u": 47, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "B7GP1H4", "row": 2, "cab": 14, "u": "", "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "0511112025008Z", "row": 2, "cab": 14, "u": 1, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "TH0M18F3DEHDN58P1542", "row": 2, "cab": 14, "u": 6, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "TH0M18F3DEHDN58P1748", "row": 2, "cab": 14, "u": 7, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "TH0M18F3DEHDN58P1759", "row": 2, "cab": 14, "u": 8, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "TH0M18F3DEHDN58P1751", "row": 2, "cab": 14, "u": 9, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "1505NB4", "row": 2, "cab": 14, "u": 11, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "DZZ4NB4", "row": 2, "cab": 14, "u": 12, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "1005NB4", "row": 2, "cab": 14, "u": 13, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "7805NB4", "row": 2, "cab": 14, "u": 14, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "C805NB4", "row": 2, "cab": 14, "u": 15, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "6YZ4NB4", "row": 2, "cab": 14, "u": 16, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "2505NB4", "row": 2, "cab": 14, "u": 17, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "D405NB4", "row": 2, "cab": 14, "u": 18, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "MT2546602YKZ", "row": 2, "cab": 14, "u": 19, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "MT2546602YEL", "row": 2, "cab": 14, "u": 20, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "MT2546602TQA", "row": 2, "cab": 14, "u": 21, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "MT2546602YEU", "row": 2, "cab": 14, "u": 22, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "MT2546602TQB", "row": 2, "cab": 14, "u": 23, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "MT2546602YBL", "row": 2, "cab": 14, "u": 24, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "MT2546602YCX", "row": 2, "cab": 14, "u": 25, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "MT2546602YD4", "row": 2, "cab": 14, "u": 26, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "MT2546602YD6", "row": 2, "cab": 14, "u": 27, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "F205NB4", "row": 2, "cab": 14, "u": 28, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "J405NB4", "row": 2, "cab": 14, "u": 29, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "3ZZ4NB4", "row": 2, "cab": 14, "u": 30, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "JBX4NB4", "row": 2, "cab": 14, "u": 31, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "8YZ4NB4", "row": 2, "cab": 14, "u": 32, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "88X4NB4", "row": 2, "cab": 14, "u": 33, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "2ZZ4NB4", "row": 2, "cab": 14, "u": 34, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "8705NB4", "row": 2, "cab": 14, "u": 35, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "J705NB4", "row": 2, "cab": 14, "u": 36, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "4205NB4", "row": 2, "cab": 14, "u": 37, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "TH0M18F3DEHDN58P1750", "row": 2, "cab": 14, "u": 40, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "TH0M18F3DEHDN58P1747", "row": 2, "cab": 14, "u": 41, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "TH0M18F3DEHDN58P1755", "row": 2, "cab": 14, "u": 42, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "TH0M18F3DEHDN58P1753", "row": 2, "cab": 14, "u": 43, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "TW0J2MV9DNT0057E2069", "row": 2, "cab": 14, "u": 46, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "TW0J2MV9DNT0057E2077", "row": 2, "cab": 14, "u": 47, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "H5GP1H4", "row": 2, "cab": 15, "u": "", "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "0511112025004E", "row": 2, "cab": 15, "u": 1, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "TH0M18F3DEHDN59O1004", "row": 2, "cab": 15, "u": 6, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "TH0M18F3DEHDN59O1040", "row": 2, "cab": 15, "u": 7, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "TH0M18F3DEHDN59O1015", "row": 2, "cab": 15, "u": 8, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "TH0M18F3DEHDN59O1001", "row": 2, "cab": 15, "u": 9, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "4H05NB4", "row": 2, "cab": 15, "u": 11, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "6M05NB4", "row": 2, "cab": 15, "u": 12, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "3605NB4", "row": 2, "cab": 15, "u": 13, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "2Q05NB4", "row": 2, "cab": 15, "u": 14, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "5P05NB4", "row": 2, "cab": 15, "u": 15, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "9Q05NB4", "row": 2, "cab": 15, "u": 16, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "4P05NB4", "row": 2, "cab": 15, "u": 17, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "5ZZ4NB4", "row": 2, "cab": 15, "u": 18, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "MT2547603NLZ", "row": 2, "cab": 15, "u": 19, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "MT2547602ZUM", "row": 2, "cab": 15, "u": 20, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "MT2547601VAX", "row": 2, "cab": 15, "u": 21, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "MT2547601VAT", "row": 2, "cab": 15, "u": 22, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "MT2547601VAW", "row": 2, "cab": 15, "u": 23, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "MT2547603P80", "row": 2, "cab": 15, "u": 24, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "MT25476030BD", "row": 2, "cab": 15, "u": 25, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "MT2547603P81", "row": 2, "cab": 15, "u": 26, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "MT25476030BL", "row": 2, "cab": 15, "u": 27, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "FYZ4NB4", "row": 2, "cab": 15, "u": 28, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "2005NB4", "row": 2, "cab": 15, "u": 29, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "7ZZ4NB4", "row": 2, "cab": 15, "u": 30, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "3205NB4", "row": 2, "cab": 15, "u": 31, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "4YZ4NB4", "row": 2, "cab": 15, "u": 32, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "9YZ4NB4", "row": 2, "cab": 15, "u": 33, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "CZZ4NB4", "row": 2, "cab": 15, "u": 34, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "GZZ4NB4", "row": 2, "cab": 15, "u": 35, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "DK05NB4", "row": 2, "cab": 15, "u": 36, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "DJ05NB4", "row": 2, "cab": 15, "u": 37, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "TH0M18F3DEHDN59O1014", "row": 2, "cab": 15, "u": 40, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "TH0M18F3DEHDN59O1010", "row": 2, "cab": 15, "u": 41, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "TH0M18F3DEHDN59O1007", "row": 2, "cab": 15, "u": 42, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "TH0M18F3DEHDN59O1013", "row": 2, "cab": 15, "u": 43, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "TW0J2MV9DNT0057E2481", "row": 2, "cab": 15, "u": 46, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "TW0J2MV9DNT0057E2463", "row": 2, "cab": 15, "u": 47, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "CFGP1H4", "row": 2, "cab": 16, "u": "", "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "051111202500A3", "row": 2, "cab": 16, "u": 1, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "TH0M18F3DEHDN5A61045", "row": 2, "cab": 16, "u": 6, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "TH0M18F3DEHDN5A61061", "row": 2, "cab": 16, "u": 7, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "TH0M18F3DEHDN5A61080", "row": 2, "cab": 16, "u": 8, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "TH0M18F3DEHDN5A61077", "row": 2, "cab": 16, "u": 9, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "5C15NB4", "row": 2, "cab": 16, "u": 11, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "DN05NB4", "row": 2, "cab": 16, "u": 12, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "DB15NB4", "row": 2, "cab": 16, "u": 13, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "7C15NB4", "row": 2, "cab": 16, "u": 14, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "9P05NB4", "row": 2, "cab": 16, "u": 15, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "HL05NB4", "row": 2, "cab": 16, "u": 16, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "2J05NB4", "row": 2, "cab": 16, "u": 17, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "5Q05NB4", "row": 2, "cab": 16, "u": 18, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "MT25476030CJ", "row": 2, "cab": 16, "u": 19, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "MT25476030CH", "row": 2, "cab": 16, "u": 20, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "MT254760300U", "row": 2, "cab": 16, "u": 21, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "MT25476030L2", "row": 2, "cab": 16, "u": 22, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "MT2547602ZZ0", "row": 2, "cab": 16, "u": 23, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "MT254760300V", "row": 2, "cab": 16, "u": 24, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "MT25476030CM", "row": 2, "cab": 16, "u": 25, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "MT25476030BP", "row": 2, "cab": 16, "u": 26, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "MT25476030K3", "row": 2, "cab": 16, "u": 27, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "7Q05NB4", "row": 2, "cab": 16, "u": 28, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "7NXHCC4", "row": 2, "cab": 16, "u": 29, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "9YF4NB4", "row": 2, "cab": 16, "u": 30, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "BZF4NB4", "row": 2, "cab": 16, "u": 31, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "D0G4NB4", "row": 2, "cab": 16, "u": 32, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "CZF4NB4", "row": 2, "cab": 16, "u": 33, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "92G4NB4", "row": 2, "cab": 16, "u": 34, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "DYF4NB4", "row": 2, "cab": 16, "u": 35, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "30G4NB4", "row": 2, "cab": 16, "u": 36, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "5BX4NB4", "row": 2, "cab": 16, "u": 37, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "TH0M18F3DEHDN5AD0006", "row": 2, "cab": 16, "u": 40, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "TH0M18F3DEHDN5AD0002", "row": 2, "cab": 16, "u": 41, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "TH0M18F3DEHDN5AD0004", "row": 2, "cab": 16, "u": 42, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "TH0M18F3DEHDN5AD0001", "row": 2, "cab": 16, "u": 43, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "TW0J2MV9DNT0057E2075", "row": 2, "cab": 16, "u": 46, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "TW0J2MV9DNT0057E2046", "row": 2, "cab": 16, "u": 47, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "F6GP1H4", "row": 2, "cab": 17, "u": "", "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "051111202500AK", "row": 2, "cab": 17, "u": 1, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "TH0M18F3DEHDN5A60992", "row": 2, "cab": 17, "u": 6, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "TH0M18F3DEHDN5A60836", "row": 2, "cab": 17, "u": 7, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "TH0M18F3DEHDN5A60854", "row": 2, "cab": 17, "u": 8, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "TH0M18F3DEHDN5A60890", "row": 2, "cab": 17, "u": 9, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "6J15NB4", "row": 2, "cab": 17, "u": 11, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "DM15NB4", "row": 2, "cab": 17, "u": 12, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "HH15NB4", "row": 2, "cab": 17, "u": 13, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "JH15NB4", "row": 2, "cab": 17, "u": 14, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "GM15NB4", "row": 2, "cab": 17, "u": 15, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "7H15NB4", "row": 2, "cab": 17, "u": 16, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "6N15NB4", "row": 2, "cab": 17, "u": 17, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "7P05NB4", "row": 2, "cab": 17, "u": 18, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "MT2547601QWB", "row": 2, "cab": 17, "u": 19, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "MT2547601QWC", "row": 2, "cab": 17, "u": 20, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "MT2547602ZKC", "row": 2, "cab": 17, "u": 21, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "MT2547603P8C", "row": 2, "cab": 17, "u": 22, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "MT2547603NZ0", "row": 2, "cab": 17, "u": 23, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "MT2547602ZHK", "row": 2, "cab": 17, "u": 24, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "MT2547603PAE", "row": 2, "cab": 17, "u": 25, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "MT2547601RCJ", "row": 2, "cab": 17, "u": 26, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "MT2547602ZLH", "row": 2, "cab": 17, "u": 27, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "3K05NB4", "row": 2, "cab": 17, "u": 28, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "FZF4NB4", "row": 2, "cab": 17, "u": 29, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "5ZF4NB4", "row": 2, "cab": 17, "u": 30, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "7YF4NB4", "row": 2, "cab": 17, "u": 31, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "C0G4NB4", "row": 2, "cab": 17, "u": 32, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "3YF4NB4", "row": 2, "cab": 17, "u": 33, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "9ZF4NB4", "row": 2, "cab": 17, "u": 34, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "CYF4NB4", "row": 2, "cab": 17, "u": 35, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "FYF4NB4", "row": 2, "cab": 17, "u": 36, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "11G4NB4", "row": 2, "cab": 17, "u": 37, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "TH0M18F3DEHDN5A60994", "row": 2, "cab": 17, "u": 40, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "TH0M18F3DEHDN5A60997", "row": 2, "cab": 17, "u": 41, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "TH0M18F3DEHDN5A60876", "row": 2, "cab": 17, "u": 42, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "TH0M18F3DEHDN5A60877", "row": 2, "cab": 17, "u": 43, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "TW0J2MV9DNT0058K2037", "row": 2, "cab": 17, "u": 46, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "TW0J2MV9DNT0057E2074", "row": 2, "cab": 17, "u": 47, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "C7GP1H4", "row": 2, "cab": 18, "u": "", "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "1111202500AA", "row": 2, "cab": 18, "u": 1, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "TH0M18F3DEHDN58P1190", "row": 2, "cab": 18, "u": 6, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "TH0M18F3DEHDN58P1195", "row": 2, "cab": 18, "u": 7, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "TH0M18F3DEHDN58P1163", "row": 2, "cab": 18, "u": 8, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "TH0M18F3DEHDN58P1276", "row": 2, "cab": 18, "u": 9, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "5N15NB4", "row": 2, "cab": 18, "u": 11, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "HP05NB4", "row": 2, "cab": 18, "u": 12, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "5DXHCC4", "row": 2, "cab": 18, "u": 13, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "7D15NB4", "row": 2, "cab": 18, "u": 14, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "GL15NB4", "row": 2, "cab": 18, "u": 15, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "1S15NB4", "row": 2, "cab": 18, "u": 16, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "2N15NB4", "row": 2, "cab": 18, "u": 17, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "GP05NB4", "row": 2, "cab": 18, "u": 18, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "MT2547602ZVD", "row": 2, "cab": 18, "u": 19, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "MT254760307A", "row": 2, "cab": 18, "u": 20, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "MT25476039TD", "row": 2, "cab": 18, "u": 21, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "MT25476039V9", "row": 2, "cab": 18, "u": 22, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "MT25476039NJ", "row": 2, "cab": 18, "u": 23, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "MT25476039V8", "row": 2, "cab": 18, "u": 24, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "MT25476039N8", "row": 2, "cab": 18, "u": 25, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "MT25476039TC", "row": 2, "cab": 18, "u": 26, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "MT25476039TH", "row": 2, "cab": 18, "u": 27, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "1Q15NB4", "row": 2, "cab": 18, "u": 28, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "2DX4NB4", "row": 2, "cab": 18, "u": 29, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "5C05NB4", "row": 2, "cab": 18, "u": 30, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "8905NB4", "row": 2, "cab": 18, "u": 31, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "7C05NB4", "row": 2, "cab": 18, "u": 32, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "DB05NB4", "row": 2, "cab": 18, "u": 33, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "3905NB4", "row": 2, "cab": 18, "u": 34, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "D505NB4", "row": 2, "cab": 18, "u": 35, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "B105NB4", "row": 2, "cab": 18, "u": 36, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "7605NB4", "row": 2, "cab": 18, "u": 37, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "TH0M18F3DEHDN58P1027", "row": 2, "cab": 18, "u": 40, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "TH0M18F3DEHDN58P1164", "row": 2, "cab": 18, "u": 41, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "TH0M18F3DEHDN58P1247", "row": 2, "cab": 18, "u": 42, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "TH0M18F3DEHDN58P1366", "row": 2, "cab": 18, "u": 43, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "TW0J2MV9DNT0058N2023", "row": 2, "cab": 18, "u": 46, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "TW0J2MV9DNT0058K2069", "row": 2, "cab": 18, "u": 47, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "56GP1H4", "row": 2, "cab": 19, "u": "", "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "TH0M18F3DEHDN58P1805", "row": 2, "cab": 19, "u": 1, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "TH0M18F3DEHDN58P1807", "row": 2, "cab": 19, "u": 6, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "TH0M18F3DEHDN58P1809", "row": 2, "cab": 19, "u": 7, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "TH0M18F3DEHDN58P1744", "row": 2, "cab": 19, "u": 8, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "DC15NB4", "row": 2, "cab": 19, "u": 9, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "DL05NB4", "row": 2, "cab": 19, "u": 11, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "6P05NB4", "row": 2, "cab": 19, "u": 12, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "DQ05NB4", "row": 2, "cab": 19, "u": 13, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "CQ05NB4", "row": 2, "cab": 19, "u": 14, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "3F15NB4", "row": 2, "cab": 19, "u": 15, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "BB15NB4", "row": 2, "cab": 19, "u": 16, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "2P05NB4", "row": 2, "cab": 19, "u": 17, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "FP05NB4", "row": 2, "cab": 19, "u": 18, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "CN05NB4", "row": 2, "cab": 19, "u": 19, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "BQ05NB4", "row": 2, "cab": 19, "u": 20, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "6D15NB4", "row": 2, "cab": 19, "u": 21, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "JB15NB4", "row": 2, "cab": 19, "u": 22, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "2D15NB4", "row": 2, "cab": 19, "u": 23, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "HB15NB4", "row": 2, "cab": 19, "u": 24, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "3D15NB4", "row": 2, "cab": 19, "u": 25, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "6C15NB4", "row": 2, "cab": 19, "u": 26, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "TH0M18F3DEHDN58P1544", "row": 2, "cab": 19, "u": 27, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "TH0M18F3DEHDN58P1546", "row": 2, "cab": 19, "u": 28, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "TH0M18F3DEHDN58P1788", "row": 2, "cab": 19, "u": 29, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "TH0M18F3DEHDN58P1801", "row": 2, "cab": 19, "u": 30, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "1111202500A0", "row": 2, "cab": 19, "u": 31, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "C705NB4", "row": 2, "cab": 19, "u": 32, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "MT2547603PA0", "row": 2, "cab": 19, "u": 33, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "MT2547602ZUC", "row": 2, "cab": 19, "u": 34, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "MT2547601QBK", "row": 2, "cab": 19, "u": 35, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "MT2547601QBJ", "row": 2, "cab": 19, "u": 36, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "MT2547601QU0", "row": 2, "cab": 19, "u": 37, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "MT2547601QTZ", "row": 2, "cab": 19, "u": 40, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "MT2547601QBH", "row": 2, "cab": 19, "u": 41, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "MT2547601R1U", "row": 2, "cab": 19, "u": 42, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "MT2547601R1X", "row": 2, "cab": 19, "u": 43, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "TW0J2MV9DNT0057E2491", "row": 2, "cab": 19, "u": 46, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "TW0J2MV9DNT0057E2525", "row": 2, "cab": 19, "u": 47, "ups": ["1E", "2E", "3E", "4E"], "busways": ["1E-01-01", "2E-01-01", "3E-01-01", "4E-01-01"]}, {"serial": "MT2534J00935", "row": 2, "cab": 20, "u": 7, "ups": ["3E", "4E"], "busways": ["4E-01-01"]}, {"serial": "MT2541J0263X", "row": 2, "cab": 20, "u": 12, "ups": ["3E", "4E"], "busways": ["4E-01-01"]}, {"serial": "MT2538J02L68", "row": 2, "cab": 20, "u": 17, "ups": ["3E", "4E"], "busways": ["4E-01-01"]}, {"serial": "MT2538J02G5X", "row": 2, "cab": 20, "u": 22, "ups": ["3E", "4E"], "busways": ["4E-01-01"]}, {"serial": "MT2538J02KUN", "row": 2, "cab": 20, "u": 27, "ups": ["3E", "4E"], "busways": ["4E-01-01"]}, {"serial": "MT2538J02KVN", "row": 2, "cab": 20, "u": 32, "ups": ["3E", "4E"], "busways": ["4E-01-01"]}];
+// Build per-cab node lookup: cabNum → [node, ...]
+const DH2_NODES_BY_CAB = {};
+DH2_NODES.forEach(n => {
+  if (!DH2_NODES_BY_CAB[n.cab]) DH2_NODES_BY_CAB[n.cab] = [];
+  DH2_NODES_BY_CAB[n.cab].push(n);
+});
+// Build per-ups lookup: upsId → [cab, ...]
+const DH2_EFEED_CABS = {};
+DH2_NODES.forEach(n => {
+  n.ups.forEach(u => {
+    if (!DH2_EFEED_CABS[u]) DH2_EFEED_CABS[u] = new Set();
+    DH2_EFEED_CABS[u].add(n.cab);
+  });
+});
+
+// Build panel-to-row lookup
+const panelRows = {}; // panelId → row object
+ROWS.forEach(r => {
+  if (r.panel) {
+    panelRows['1C-' + r.panel] = r;
+    panelRows['2D-' + r.panel] = r;
+  }
+});
+// E-feed panel rows (1E–4E serve rows 1–2)
+const EFEED_ROWS = [1, 2];
+
+// Cabinet type descriptions
+const CAB_DESCRIPTIONS = {
+  'HD-GB3d': '140kW GPU Compute Cabinet (Busway-fed, 4×C + 4×D feeds)',
+  'CP5-v2a': 'CPU Compute Cabinet (CP5) — 17.2kW',
+  'T1-FE-v3a': 'Top-of-Row Switch (T1)',
+  'T1-FE-v5a': 'Top-of-Row Switch (T1)',
+  'T0-FE-v1a': 'Top-of-Row Switch (T0)',
+  'T2-FE-v1a': 'Top-of-Row Switch (T2)',
+  'T2-FE-v2a': 'Aggregation Switch (T2)',
+  'T2-FE-v2b': 'Aggregation Switch (T2)',
+  'T2-FE-v2c': 'Aggregation Switch (T2)',
+  'T2-FE-v2d': 'Aggregation Switch (T2)',
+  'XDR x6a': 'InfiniBand Switch (XDR x6)',
+  'XDR x4a': 'InfiniBand Switch (XDR x4)',
+  'XDR x4b': 'InfiniBand Switch (XDR x4)',
+  'FCR-v3a1': 'Fabric Core Router (FCR)',
+  'FCR-v3b': 'Fabric Core Router (FCR)',
+  'DPR-E1': 'Data Path Router (DPR)',
+  'DPR-E2': 'Data Path Router (DPR)',
+  'PSCR': 'Platform Services Core Router (PSCR)',
+  'T3-E-v3a': 'Core Switch (T3)',
+  'T3-E-v3b': 'Core Switch (T3)',
+  'T3-E-v3c': 'Core Switch (T3)',
+  'T3-E-v3d': 'Core Switch (T3)',
+  'T3-E-v3e': 'Core Switch (T3)',
+  'T3-E-v3f': 'Core Switch (T3)',
+  'RES': 'Reserved / Empty',
+  'U': 'Unspecified'
+};
+
+// ── State ──────────────────────────────────────────────────────────────────
+let selectedPanel = null;  // '1C-01', '2D-03', etc.
+let selectedCab = null;    // {row, cab} object
+let selectedFeed = null;   // 'C' or 'D'
+
+// ── Build sidebar panels ───────────────────────────────────────────────────
+function buildPanelSidebar() {
+  const cList = document.getElementById('feedC-list');
+  const dList = document.getElementById('feedD-list');
+
+  for (let i = 1; i <= 8; i++) {
+    const nn = String(i).padStart(2, '0');
+    const row = ROWS[i - 1];
+    const hasCabs = row && row.cabinets.filter(c => c.cat === 'compute').length;
+
+    // Feed C
+    const cItem = document.createElement('div');
+    cItem.className = 'panel-item';
+    cItem.id = 'panel-1C-' + nn;
+    cItem.innerHTML = `
+      <div class="panel-dot" style="background:${FEED_C_COLOR}"></div>
+      <div>
+        <div class="panel-name">PNL-IRC-1C-${nn}</div>
+        <div class="panel-sub">Row ${i} &nbsp;•&nbsp; Feed C</div>
+      </div>
+    `;
+    cItem.onclick = () => selectPanel('1C-' + nn);
+    cList.appendChild(cItem);
+
+    // Feed D
+    const dItem = document.createElement('div');
+    dItem.className = 'panel-item';
+    dItem.id = 'panel-2D-' + nn;
+    dItem.innerHTML = `
+      <div class="panel-dot" style="background:${FEED_D_COLOR}"></div>
+      <div>
+        <div class="panel-name">PNL-IRC-2D-${nn}</div>
+        <div class="panel-sub">Row ${i} &nbsp;•&nbsp; Feed D</div>
+      </div>
+    `;
+    dItem.onclick = () => selectPanel('2D-' + nn);
+    dList.appendChild(dItem);
+  }
+}
+
+// ── Build floor plan ───────────────────────────────────────────────────────
+function toggleIRCPanel() {
+  var list = document.getElementById('irc-panel-list');
+  var chev = document.getElementById('irc-panel-chev');
+  var collapsed = list.style.display === 'none';
+  list.style.display = collapsed ? '' : 'none';
+  chev.innerHTML = collapsed ? '&#9660;' : '&#9654;';
+}
+
+function togglePanelGroup(hdr) {
+  var list = hdr.nextElementSibling;
+  if (!list) return;
+  var collapsed = list.style.display === 'none';
+  list.style.display = collapsed ? '' : 'none';
+  var chev = hdr.querySelector('.pg-chev');
+  if (chev) chev.textContent = collapsed ? '▼' : '▶';
+}
+
+function buildFloorPlan() {
+  const fp = document.getElementById('floorPlan');
+  fp.innerHTML = '';
+
+  let lastZone = null;
+  ROWS.forEach(row => {
+    if (row.zone !== lastZone) {
+      const zl = document.createElement('div');
+      zl.className = 'zone-label';
+      zl.textContent = {
+        'compute': '▸ GPU Compute Rows (HD-GB3d — 136kW)',
+        'grid-a':  '▸ Grid-A / Management Rows',
+        'infra':   '▸ Infrastructure / Network Rows'
+      }[row.zone] || row.zone;
+      fp.appendChild(zl);
+      lastZone = row.zone;
+    }
+
+    const wrapper = document.createElement('div');
+    wrapper.className = 'row-wrapper';
+
+    // Row number
+    const rn = document.createElement('div');
+    rn.className = 'row-num';
+    rn.textContent = row.row;
+    wrapper.appendChild(rn);
+
+    // Panel tags
+    const tags = document.createElement('div');
+    tags.className = 'row-panel-tags';
+    if (row.panel) {
+      const nn = row.panel;
+      const tC = document.createElement('div');
+      tC.className = 'row-tag';
+      tC.style.background = FEED_C_COLOR;
+      tC.style.color = '#1a1a2e';
+      tC.textContent = '1C-' + nn;
+      tC.id = 'rowtag-1C-' + nn;
+      tC.onclick = () => selectPanel('1C-' + nn);
+      const tD = document.createElement('div');
+      tD.className = 'row-tag';
+      tD.style.background = FEED_D_COLOR;
+      tD.style.color = 'white';
+      tD.textContent = '2D-' + nn;
+      tD.id = 'rowtag-2D-' + nn;
+      tD.onclick = () => selectPanel('2D-' + nn);
+      tags.appendChild(tC);
+      tags.appendChild(tD);
+    } else {
+      const nop = document.createElement('div');
+      nop.style.cssText = 'font-size:9px;color:#37474f;padding:2px 4px;';
+      nop.textContent = 'No IRC panel';
+      tags.appendChild(nop);
+    }
+    wrapper.appendChild(tags);
+
+    // Cabinets
+    const cabRow = document.createElement('div');
+    cabRow.className = 'cab-row';
+
+    row.cabinets.forEach(c => {
+      const el = document.createElement('div');
+      el.className = 'cab ' + c.cat;
+      el.id = 'cab-' + row.row + '-' + c.cab;
+      el.dataset.row = row.row;
+      el.dataset.cab = c.cab;
+      el.dataset.type = c.type;
+      el.dataset.cat = c.cat;
+      el.dataset.panel = row.panel || '';
+
+      if (c.cat !== 'empty') {
+        el.onclick = () => selectCabinet(row, c);
+      }
+
+      // Cabinet body color (handled by CSS classes: .cab.compute, .cab.network, .cab.empty)
+      // Grid-A compute gets a slightly different shade for visual distinction
+      if (c.cat === 'compute' && row.zone === 'grid-a') {
+        el.style.background = '#2e7d56';
+      }
+
+      // Label
+      const numEl = document.createElement('div');
+      numEl.className = 'cab-num';
+      numEl.textContent = c.cab;
+      el.appendChild(numEl);
+
+      const typeEl = document.createElement('div');
+      typeEl.className = 'cab-type';
+      typeEl.textContent = c.type.length > 8 ? c.type.substring(0, 8) : c.type;
+      el.appendChild(typeEl);
+
+      // Feed strips at bottom (for compute/network cabs with panels)
+      if (row.panel && c.cat !== 'empty') {
+        const strips = document.createElement('div');
+        strips.className = 'cab-strips';
+        const sC = document.createElement('div');
+        sC.className = 'cab-strip';
+        sC.style.background = FEED_C_COLOR;
+        const sD = document.createElement('div');
+        sD.className = 'cab-strip';
+        sD.style.background = FEED_D_COLOR;
+        strips.appendChild(sC);
+        strips.appendChild(sD);
+        el.appendChild(strips);
+      }
+
+      cabRow.appendChild(el);
+    });
+
+    wrapper.appendChild(cabRow);
+    fp.appendChild(wrapper);
+  });
+}
+
+// ── Selection logic ────────────────────────────────────────────────────────
+function selectFeed(feed) {
+  if (feed === 'E') { selectEPanel('1E'); return; } // E legend click shows 1E panel
+  if (selectedFeed === feed) { clearSelection(); return; }
+  selectedFeed = feed; selectedPanel = null; selectedCab = null;
+  clearAllHighlights();
+
+  const color = feed === 'C' ? FEED_C_COLOR : FEED_D_COLOR;
+  const panelPrefix = feed === 'C' ? '1C-' : '2D-';
+  const otherPrefix = feed === 'C' ? '2D-' : '1C-';
+  const otherColor = feed === 'C' ? FEED_D_COLOR : FEED_C_COLOR;
+  const feedLabel = feed === 'C' ? 'Feed C (1C)' : 'Feed D (2D)';
+  const otherLabel = feed === 'C' ? 'Feed D (2D)' : 'Feed C (1C)';
+
+  // Mark legend item active
+  document.querySelectorAll('.legend-item.clickable').forEach(el => {
+    el.classList.toggle('feed-active', el.dataset.feed === feed);
+  });
+
+  // Highlight all non-empty cabs in rows with panels; dim others
+  const affectedRows = new Set();
+  document.querySelectorAll('.cab').forEach(el => {
+    if (el.dataset.panel && el.dataset.cat !== 'empty') {
+      el.classList.add('highlighted');
+      affectedRows.add(parseInt(el.dataset.row));
+    } else {
+      el.classList.add('dimmed');
+    }
+  });
+
+  // Highlight the panel sidebar items for this feed
+  document.querySelectorAll('.panel-item').forEach(el => {
+    el.classList.toggle('selected', el.id && el.id.startsWith('panel-' + panelPrefix));
+  });
+
+  // Count stats
+  const panelCount = affectedRows.size;
+  const cabCount = document.querySelectorAll('.cab.highlighted').length;
+  const rowList = [...affectedRows].sort((a,b)=>a-b);
+
+  document.getElementById('detailPanel').innerHTML = `
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+      <h3 style="margin:0;color:${color};">${feedLabel}</h3>
+      <div style="display:flex;gap:6px;"><button class="ex-open-btn" onclick="showExportModal()">&#8595; Export</button><button class="clear-btn" onclick="clearSelection()">✕ Clear</button></div>
+    </div>
+
+    <div class="detail-section">
+      <h4>Feed Summary</h4>
+      <div class="detail-row">
+        <span class="detail-label">Feed</span>
+        <span class="feed-badge" style="background:${color}22;color:${color};border:1px solid ${color}44;">
+          <div class="feed-dot" style="background:${color};"></div>
+          ${feedLabel}
+        </span>
+      </div>
+      <div class="detail-row">
+        <span class="detail-label">Panels on this feed</span>
+        <span class="detail-value">${panelCount} panels (rows 1–${rowList[rowList.length-1]})</span>
+      </div>
+      <div class="detail-row">
+        <span class="detail-label">Cabinets powered</span>
+        <span class="detail-value">${cabCount} cabinets</span>
+      </div>
+      <div class="detail-row">
+        <span class="detail-label">Redundant feed</span>
+        <span class="feed-badge" style="background:${otherColor}22;color:${otherColor};border:1px solid ${otherColor}44;cursor:pointer;" onclick="selectFeed('${feed === 'C' ? 'D' : 'C'}')">
+          <div class="feed-dot" style="background:${otherColor};"></div>
+          ${otherLabel} ↗
+        </span>
+      </div>
+    </div>
+
+    <div class="detail-section">
+      <h4>Panels (PNL-IRC-${panelPrefix.replace('-','')})</h4>
+      <div style="display:flex;flex-direction:column;gap:3px;">
+        ${rowList.map(r => {
+          const nn = String(r).padStart(2,'0');
+          const pid = panelPrefix + nn;
+          return `<div class="feed-badge" style="background:${color}22;color:${color};border:1px solid ${color}44;cursor:pointer;" onclick="selectPanel('${pid}')">`
+            + `<div class="feed-dot" style="background:${color};"></div>`
+            + `PNL-IRC-${pid} &nbsp;(Row ${r}) ↗</div>`;
+        }).join('')}
+      </div>
+    </div>
+
+    <div class="detail-section">
+      <h4>Impact if this feed fails</h4>
+      <div class="impact-card">
+        <div class="ic-title" style="color:#ef5350;">⚠ ${cabCount} cabinets lose one power feed</div>
+        <div class="ic-sub">Compute cabinets are dual-fed — losing ${feedLabel} reduces redundancy but does not cause an immediate outage if ${otherLabel} is healthy.</div>
+      </div>
+    </div>
+  `;
+}
+
+function clearAllHighlights() {
+  document.querySelectorAll('.cab').forEach(el => {
+    el.classList.remove('selected', 'dimmed', 'highlighted');
+  });
+  document.querySelectorAll('.panel-item').forEach(el => el.classList.remove('selected'));
+  document.querySelectorAll('.row-tag').forEach(el => el.classList.remove('selected'));
+  document.querySelectorAll('.legend-item.clickable').forEach(el => el.classList.remove('feed-active'));
+}
+
+function openDetailCol() {
+  document.getElementById('detail-col').classList.remove('dp-hidden');
+}
+function closeDetailCol() {
+  document.getElementById('detail-col').classList.add('dp-hidden');
+  clearSelection();
+}
+
+function selectPanel(panelId) {
+  if (selectedPanel === panelId) {
+    clearSelection();
+    return;
+  }
+  selectedPanel = panelId;
+  selectedCab = null;
+  openDetailCol();
+  clearAllHighlights();
+
+  // Find which row this panel serves
+  const nn = panelId.split('-')[1];
+  const rowNum = parseInt(nn, 10);
+  const row = ROWS[rowNum - 1];
+
+  // Highlight panel items
+  document.querySelectorAll('.panel-item').forEach(el => {
+    if (el.id === 'panel-' + panelId) el.classList.add('selected');
+  });
+  document.querySelectorAll('.row-tag').forEach(el => {
+    if (el.id === 'rowtag-' + panelId) el.classList.add('selected');
+  });
+
+  // Dim all cabs not in this row, highlight cabs in this row
+  document.querySelectorAll('.cab').forEach(el => {
+    if (parseInt(el.dataset.row) === rowNum) {
+      el.classList.add('highlighted');
+    } else {
+      el.classList.add('dimmed');
+    }
+  });
+
+  // Show detail
+  showPanelDetail(panelId, row);
+}
+
+function selectCabinet(row, cab) {
+  selectedCab = {row, cab};
+  selectedPanel = null;
+  openDetailCol();
+  clearAllHighlights();
+
+  const el = document.getElementById('cab-' + row.row + '-' + cab.cab);
+  if (el) el.classList.add('selected');
+
+  // Dim everything else
+  document.querySelectorAll('.cab').forEach(c => {
+    if (c.id !== 'cab-' + row.row + '-' + cab.cab) c.classList.add('dimmed');
+  });
+
+  showCabinetDetail(row, cab);
+}
+
+function selectEPanel(upsId) {
+  const panelItemId = 'panel-UPS-' + upsId;
+  // Toggle off if already selected
+  const alreadySel = selectedPanel === 'UPS-' + upsId;
+  if (alreadySel) { clearSelection(); return; }
+  selectedPanel = 'UPS-' + upsId;
+  selectedCab = null;
+  selectedFeed = null;
+  clearAllHighlights();
+
+  const color = FEED_E_COLORS[upsId];
+  const affectedCabs = DH2_EFEED_CABS[upsId] || new Set();
+
+  // Highlight affected cabs, dim others
+  document.querySelectorAll('.cab').forEach(el => {
+    const cabNum = parseInt(el.dataset.cab);
+    if (affectedCabs.has(cabNum)) el.classList.add('highlighted');
+    else el.classList.add('dimmed');
+  });
+
+  // Highlight sidebar item
+  document.querySelectorAll('.panel-item').forEach(el => {
+    el.classList.toggle('selected', el.id === panelItemId);
+  });
+
+  // Build node list for this UPS
+  const nodes = DH2_NODES.filter(n => n.ups.includes(upsId));
+  const byRow = {};
+  nodes.forEach(n => {
+    if (!byRow[n.row]) byRow[n.row] = {};
+    if (!byRow[n.row][n.cab]) byRow[n.row][n.cab] = [];
+    byRow[n.row][n.cab].push(n);
+  });
+
+  const rowsHtml = Object.keys(byRow).sort((a,b)=>+a-+b).map(rowNum => {
+    const cabsHtml = Object.keys(byRow[rowNum]).sort((a,b)=>+a-+b).map(cabNum => {
+      const ns = byRow[rowNum][cabNum];
+      return `<div style="font-size:10px;color:#64748b;padding:2px 0;">Cab ${cabNum}: ${ns.length} devices</div>`;
+    }).join('');
+    return `<div style="font-size:10px;font-weight:700;color:#94a3b8;margin-top:6px;">Row ${rowNum}</div>${cabsHtml}`;
+  }).join('');
+
+  document.getElementById('detailPanel').innerHTML = `
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+      <h3 style="margin:0;color:${color};">UPS-${upsId}</h3>
+      <button class="clear-btn" onclick="clearSelection()">✕ Clear</button>
+    </div>
+
+    <div class="detail-section">
+      <h4>UPS Feed Info</h4>
+      <div class="detail-row">
+        <span class="detail-label">UPS ID</span>
+        <span class="detail-value" style="color:${color};">UPS-${upsId}</span>
+      </div>
+      <div class="detail-row">
+        <span class="detail-label">FL PDU</span>
+        <span class="detail-value">PDU-${upsId}-01</span>
+      </div>
+      <div class="detail-row">
+        <span class="detail-label">Rows served</span>
+        <span class="detail-value">1 – 2</span>
+      </div>
+      <div class="detail-row">
+        <span class="detail-label">Cabinets</span>
+        <span class="detail-value">${affectedCabs.size}</span>
+      </div>
+      <div class="detail-row">
+        <span class="detail-label">Devices on feed</span>
+        <span class="detail-value">${nodes.length}</span>
+      </div>
+    </div>
+
+    <div class="detail-section">
+      <h4>Impact if UPS-${upsId} fails</h4>
+      <div class="impact-card">
+        <div class="ic-title" style="color:#ef5350;">⚠ ${nodes.length} devices lose one power feed</div>
+        <div class="ic-sub">Each device has redundant UPS feeds — losing UPS-${upsId} reduces redundancy but does not cause an immediate outage while other feeds remain healthy.</div>
+      </div>
+    </div>
+
+    <div class="detail-section">
+      <h4>Affected Cabinets</h4>
+      ${rowsHtml}
+    </div>
+  `;
+}
+
+function clearSelection() {
+  selectedPanel = null;
+  selectedCab = null;
+  selectedFeed = null;
+  clearAllHighlights();
+  const _computeTotal = ROWS.reduce((s,r)=>s+r.cabinets.filter(c=>c.cat==='compute').length,0);
+  const _networkTotal = ROWS.reduce((s,r)=>s+r.cabinets.filter(c=>c.cat==='network').length,0);
+  const _emptyTotal   = ROWS.reduce((s,r)=>s+r.cabinets.filter(c=>c.cat==='empty').length,0);
+  const _gb3dCount    = ROWS.reduce((s,r)=>s+r.cabinets.filter(c=>c.type==='HD-GB3d').length,0);
+  const _cp5Count     = ROWS.reduce((s,r)=>s+r.cabinets.filter(c=>c.type==='CP5-v2a').length,0);
+  const _kwTotal      = Math.round(_gb3dCount*140 + _cp5Count*17.2);
+  // populate stats bar
+  const sv = id => document.getElementById(id);
+  if(sv('stat-compute')) sv('stat-compute').textContent=_computeTotal;
+  if(sv('stat-network')) sv('stat-network').textContent=_networkTotal;
+  if(sv('stat-empty'))   sv('stat-empty').textContent=_emptyTotal;
+  if(sv('stat-kw'))      sv('stat-kw').textContent=(_kwTotal/1000).toFixed(1)+'MW';
+
+  document.getElementById('detailPanel').innerHTML = `
+    <div class="empty-state">
+      <div style="font-size:24px;margin-bottom:8px;">⚡</div>
+      <div style="font-size:12px;font-weight:600;color:#334155;margin-bottom:12px;">Data Hall 2 — Phoenix</div>
+      <div style="display:flex;flex-direction:column;gap:6px;width:100%;padding:0 16px;">
+        <div style="display:flex;justify-content:space-between;font-size:11px;"><span style="color:#94a3b8;">GPU compute</span><span style="font-weight:700;color:#3a8f68;">${_computeTotal} cabs</span></div>
+        <div style="display:flex;justify-content:space-between;font-size:11px;"><span style="color:#94a3b8;">Network / EOR</span><span style="font-weight:700;color:#3a6ea8;">${_networkTotal} cabs</span></div>
+        <div style="display:flex;justify-content:space-between;font-size:11px;"><span style="color:#94a3b8;">Reserved</span><span style="font-weight:700;color:#94a3b8;">${_emptyTotal} cabs</span></div>
+        <div style="border-top:1px solid rgba(0,0,0,0.06);margin:4px 0;"></div>
+        <div style="display:flex;justify-content:space-between;font-size:11px;"><span style="color:#94a3b8;">Total capacity</span><span style="font-weight:700;color:#6366f1;">${(_kwTotal/1000).toFixed(1)} MW</span></div>
+      </div>
+      <div style="margin-top:16px;font-size:10px;color:#94a3b8;">Click a panel, cabinet, or feed<br>to see power details</div>
+    </div>
+  `;
+}
+
+// ── Power chain renderer ───────────────────────────────────────────────────
+function renderPowerChain(entries) {
+  return entries.map(function(entry, i, arr) {
+    var lbl = entry[0], val = entry[1], clr = entry[2];
+    var connector = i < arr.length - 1
+      ? '<div style="width:1px;flex:1;min-height:10px;background:rgba(0,0,0,0.1);margin-top:2px;"></div>'
+      : '';
+    var border = i < arr.length - 1 ? 'border-bottom:1px solid rgba(0,0,0,0.04);' : '';
+    return '<div style="display:flex;align-items:flex-start;gap:6px;padding:3px 0;' + border + '">'
+      + '<div style="display:flex;flex-direction:column;align-items:center;padding-top:2px;">'
+      + '<div style="width:8px;height:8px;border-radius:2px;background:' + clr + ';flex-shrink:0;"></div>'
+      + connector + '</div>'
+      + '<div style="flex:1;">'
+      + '<div style="font-size:10px;font-weight:700;color:' + clr + ';">' + lbl + '</div>'
+      + '<div style="font-size:10px;color:#64748b;">' + val + '</div>'
+      + '</div></div>';
+  }).join('');
+}
+
+const POWER_CHAIN_BASE = [
+  ['Utility Feed',    '3.5MW utility + 1.3MW fuel cell',    '#64748b'],
+  ['MVG Switchgear',  'MVG-01 \u2013 MVG-04 \u00b7 1200A \u00b7 12.47KV', '#6366f1'],
+  ['Transformer',     '2500 KVA \u00b7 12.47KV \u2192 480/277V',   '#0891b2'],
+  ['MSB (Container)', '3000A \u00b7 480V',                          '#0891b2'],
+  ['EG (Backup)',     '2250kW \u00b7 480/277V',                     '#d97706'],
+  ['MBB',             '1600A \u00b7 480V',                          '#0891b2'],
+  ['UPS',             '1.25 MW',                                     '#16a34a'],
+  ['COD',             '1600A \u00b7 480V',                          '#0891b2'],
+  ['PDU',             '625 kVA (typical)',                           '#0891b2'],
+];
+
+// ── Detail views ───────────────────────────────────────────────────────────
+function showPanelDetail(panelId, row) {
+  const feed = panelId.startsWith('1C') ? 'C' : 'D';
+  const nn = panelId.split('-')[1];
+  const color = feed === 'C' ? FEED_C_COLOR : FEED_D_COLOR;
+  const other = feed === 'C' ? '2D-' + nn : '1C-' + nn;
+  const otherColor = feed === 'C' ? FEED_D_COLOR : FEED_C_COLOR;
+  const fullName = 'PNL-IRC-' + panelId;
+
+  const computeCabs = row ? row.cabinets.filter(c => c.cat === 'compute') : [];
+  const netCabs = row ? row.cabinets.filter(c => c.cat === 'network') : [];
+  const emptyCabs = row ? row.cabinets.filter(c => c.cat === 'empty') : [];
+
+  const dp = document.getElementById('detailPanel');
+  dp.innerHTML = `
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+      <h3 style="margin:0;">${fullName}</h3>
+      <div style="display:flex;gap:6px;"><button class="ex-open-btn" onclick="showExportModal()">&#8595; Export</button><button class="clear-btn" onclick="clearSelection()">✕ Clear</button></div>
+    </div>
+
+    <div class="detail-section">
+      <h4>Panel Info</h4>
+      <div class="detail-row">
+        <span class="detail-label">Panel</span>
+        <span class="detail-value">${fullName}</span>
+      </div>
+      <div class="detail-row">
+        <span class="detail-label">Feed</span>
+        <span class="feed-badge" style="background:${color}22;color:${color};border:1px solid ${color}44;">
+          <div class="feed-dot" style="background:${color};"></div>
+          Feed ${feed} (${feed === 'C' ? '1C' : '2D'})
+        </span>
+      </div>
+      <div class="detail-row">
+        <span class="detail-label">Serves Row</span>
+        <span class="detail-value">Row ${row ? row.row : '?'}</span>
+      </div>
+      <div class="detail-row">
+        <span class="detail-label">Zone</span>
+        <span class="detail-value">${row ? row.zone.toUpperCase() : '?'}</span>
+      </div>
+      <div class="detail-row">
+        <span class="detail-label">Redundant Feed</span>
+        <span class="feed-badge" style="background:${otherColor}22;color:${otherColor};border:1px solid ${otherColor}44;">
+          <div class="feed-dot" style="background:${otherColor};"></div>
+          PNL-IRC-${other}
+        </span>
+      </div>
+    </div>
+
+    <div class="detail-section">
+      <h4>What goes down if this panel fails?</h4>
+      ${computeCabs.length > 0 ? `
+      <div class="impact-card">
+        <div class="ic-title" style="color:#ef5350;">⚠ Compute Cabinets Impacted</div>
+        <div class="ic-sub">${computeCabs.length} compute cabinet${computeCabs.length>1?'s':''} lose one power feed</div>
+        <div style="margin-top:6px;display:flex;flex-wrap:wrap;gap:3px;">
+          ${computeCabs.map(c => `<span style="background:#0f3460;border-radius:3px;padding:2px 5px;font-size:10px;">Cab ${c.cab}</span>`).join('')}
+        </div>
+      </div>
+      <div class="note-box">
+        ℹ GPU compute cabinets (HD-GB3d) are dual-fed by both Feed C and Feed D panels for the same row. Losing this panel reduces redundancy but does not cause an immediate outage if the redundant panel is healthy.
+      </div>` : ''}
+      ${netCabs.length > 0 ? `
+      <div class="impact-card" style="margin-top:6px;">
+        <div class="ic-title" style="color:#FFA726;">Network / EOR Cabinets</div>
+        <div class="ic-sub">${netCabs.length} network cabinet${netCabs.length>1?'s':''} in this row</div>
+        <div style="margin-top:6px;display:flex;flex-wrap:wrap;gap:3px;">
+          ${netCabs.map(c => `<span style="background:#0f3460;border-radius:3px;padding:2px 5px;font-size:10px;">${c.type} (Cab ${c.cab})</span>`).join('')}
+        </div>
+      </div>` : ''}
+    </div>
+
+    <div class="detail-section">
+      <h4>Cabinet Summary</h4>
+      <div class="detail-row">
+        <span class="detail-label">Compute</span>
+        <span class="detail-value">${computeCabs.length} cabinets</span>
+      </div>
+      <div class="detail-row">
+        <span class="detail-label">Network / EOR</span>
+        <span class="detail-value">${netCabs.length} cabinets</span>
+      </div>
+      <div class="detail-row">
+        <span class="detail-label">Reserved</span>
+        <span class="detail-value">${emptyCabs.length} cabinets</span>
+      </div>
+    </div>
+
+    <div class="detail-section">
+      <h4>Upstream Power Chain</h4>
+      <div style="font-size:10px;color:#94a3b8;margin-bottom:8px;">Source: E01-01 Electrical Block Diagrams (Chirisa / Volo)</div>
+      ${renderPowerChain(POWER_CHAIN_BASE.concat([['IRC Panel', fullName + ' \u2192 Row cabinets', color]]))}
+      <div class="note-box" style="margin-top:8px;">
+        \u2139 Design: 4-make-3 distributed redundant \u00b7 3.75MW critical capacity per quadrant \u00b7 4 MVGs total
+      </div>
+    </div>
+  `;
+}
+
+function showCabinetDetail(row, cab) {
+  const desc = CAB_DESCRIPTIONS[cab.type] || cab.type;
+  const isCompute = cab.cat === 'compute';
+  const isNetwork = cab.cat === 'network';
+  const panelNN = row.panel;
+
+  const dp = document.getElementById('detailPanel');
+  dp.innerHTML = jiraTicketHtml(cab.cab) + `
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+      <h3 style="margin:0;">Cabinet ${cab.cab}</h3>
+      <div style="display:flex;gap:6px;"><button class="ex-open-btn" onclick="showExportModal()">&#8595; Export</button><button class="clear-btn" onclick="clearSelection()">✕ Clear</button></div>
+    </div>
+
+    <div class="detail-section">
+      <h4>Cabinet Info</h4>
+      <div class="detail-row">
+        <span class="detail-label">Cab #</span>
+        <span class="detail-value">${cab.cab}</span>
+      </div>
+      <div class="detail-row">
+        <span class="detail-label">Row</span>
+        <span class="detail-value">${row.row}</span>
+      </div>
+      <div class="detail-row">
+        <span class="detail-label">Type</span>
+        <span class="detail-value">${cab.type}</span>
+      </div>
+      <div class="detail-row">
+        <span class="detail-label">Category</span>
+        <span class="detail-value" style="text-transform:capitalize;">${cab.cat}</span>
+      </div>
+      <div class="detail-row">
+        <span class="detail-label">Zone</span>
+        <span class="detail-value">${row.zone.toUpperCase()}</span>
+      </div>
+      <div class="detail-row" style="margin-top:4px;">
+        <span class="detail-label" style="color:#90a4ae;font-size:10px;">${desc}</span>
+      </div>
+    </div>
+
+    ${panelNN ? `
+    <div class="detail-section">
+      <h4>Power Feeds</h4>
+      <div style="display:flex;flex-direction:column;gap:4px;margin-bottom:6px;">
+        <div class="feed-badge" style="background:${FEED_C_COLOR}22;color:${FEED_C_COLOR};border:1px solid ${FEED_C_COLOR}44;cursor:pointer;" onclick="selectPanel('1C-${panelNN}')">
+          <div class="feed-dot" style="background:${FEED_C_COLOR};"></div>
+          PNL-IRC-1C-${panelNN} (Feed C) ↗
+        </div>
+        <div class="feed-badge" style="background:${FEED_D_COLOR}22;color:${FEED_D_COLOR};border:1px solid ${FEED_D_COLOR}44;cursor:pointer;" onclick="selectPanel('2D-${panelNN}')">
+          <div class="feed-dot" style="background:${FEED_D_COLOR};"></div>
+          PNL-IRC-2D-${panelNN} (Feed D) ↗
+        </div>
+      </div>
+      ${isCompute ? `
+      <div class="detail-row" style="margin-top:4px;">
+        <span class="detail-label">Busway (C side)</span>
+        <span class="detail-value" style="font-size:10px;color:#7eb8d4;">BUSWAY-1C/2C/3C/4C-${parseInt(panelNN)<=4?'01':'02'}</span>
+      </div>
+      <div class="detail-row">
+        <span class="detail-label">Busway (D side)</span>
+        <span class="detail-value" style="font-size:10px;color:#9b7eb8;">BUSWAY-1D/2D/3D/4D-${parseInt(panelNN)<=4?'01':'02'}</span>
+      </div>
+      <div class="note-box">
+        ℹ This cabinet has dual-feed redundancy. Losing one panel does not cause an immediate outage.
+        ${cab.type === 'HD-GB3d' ? '<br><br>⚡ <strong>140kW GPU compute</strong> (HD-GB3d) — overhead busway (BUSWAY-1C/2C/3C/4C + BUSWAY-1D/2D/3D/4D, 8 drops total).' : ''}
+      </div>` : ''}
+      ${isNetwork ? `
+      <div class="note-box">
+        ℹ Network/EOR cabinets may have independent power circuits. Confirm with electrical drawings.
+      </div>` : ''}
+    </div>` : `
+    <div class="detail-section">
+      <h4>Power Feeds</h4>
+      <div class="note-box" style="color:#78909c;">
+        No IRC panel assigned to this row. Power source may be from facility infrastructure circuits.
+      </div>
+    </div>`}
+
+    <div class="detail-section">
+      <h4>Row Context</h4>
+      <div class="detail-row">
+        <span class="detail-label">Row #</span>
+        <span class="detail-value">${row.row}</span>
+      </div>
+      <div class="detail-row">
+        <span class="detail-label">Row Type</span>
+        <span class="detail-value">${row.type || '—'}</span>
+      </div>
+      <div class="detail-row">
+        <span class="detail-label">Cabinets in Row</span>
+        <span class="detail-value">${row.cabinets.length}</span>
+      </div>
+    </div>
+
+    ${panelNN ? `
+    <div class="detail-section">
+      <h4>Upstream Power Chain</h4>
+      <div style="font-size:10px;color:#94a3b8;margin-bottom:8px;">E01-01 Electrical Block Diagrams (Chirisa / Volo)</div>
+      ${renderPowerChain(POWER_CHAIN_BASE.concat([
+        ['IRC Panels', 'PNL-IRC-1C-' + panelNN + ' + PNL-IRC-2D-' + panelNN, '#FF9800'],
+        ['This Cabinet', 'Cab ' + cab.cab + ' \u00b7 ' + cab.type, '#3a8f68'],
+      ]))}
+    </div>` : ''}
+
+    ${DH2_NODES_BY_CAB[cab.cab] ? `
+    <div class="detail-section">
+      <h4>E-Feed Devices (${DH2_NODES_BY_CAB[cab.cab].length} nodes)</h4>
+      <div style="max-height:220px;overflow-y:auto;">
+        ${(()=>{
+          const nodes = DH2_NODES_BY_CAB[cab.cab];
+          return nodes.map(n => {
+            const feedBadges = n.ups.map(u => `<span style="display:inline-block;padding:1px 5px;border-radius:3px;font-size:9px;font-weight:700;background:${FEED_E_COLORS[u]}22;color:${FEED_E_COLORS[u]};border:1px solid ${FEED_E_COLORS[u]}44;margin-right:2px;">${u}</span>`).join('');
+            const bwStr = n.busways.join(', ');
+            return `<div style="padding:5px 0;border-bottom:1px solid rgba(0,0,0,0.04);font-size:11px;">
+              <div style="display:flex;align-items:center;justify-content:space-between;gap:4px;">
+                <span style="font-family:'SF Mono',monospace;font-size:10px;color:#6366f1;">${n.serial}</span>
+                <span style="color:#94a3b8;font-size:10px;">U${n.u}</span>
+              </div>
+              <div style="margin-top:2px;display:flex;align-items:center;gap:4px;">
+                ${feedBadges}
+                <span style="font-size:9px;color:#94a3b8;">${bwStr}</span>
+              </div>
+            </div>`;
+          }).join('');
+        })()}
+      </div>
+    </div>` : ''}
+
+    ${NB_RACK_INDEX[cab.cab] ? `
+    <div class="detail-section">
+      <h4>Devices (NetBox)</h4>
+      <div id="nb-devices-slot"></div>
+    </div>` : ''}
+  `;
+  if (NB_RACK_INDEX[cab.cab]) fetchAndShowDevices(cab.cab);
+}
+
+// ── Search ────────────────────────────────────────────────────────────────
+// Serial cache: serial → {cabNum, deviceName, model, position}
+const NB_SERIAL_CACHE = {};
+let _searchTimer = null;
+
+function doSearch(q) {
+  const res = document.getElementById('searchResults');
+  res.innerHTML = '';
+  if (!q || q.length < 2) return;
+  const ql = q.toLowerCase();
+
+  // Static cabinet/type hits
+  const hits = [];
+  ROWS.forEach(row => {
+    row.cabinets.forEach(c => {
+      if (
+        String(c.cab).includes(ql) ||
+        c.type.toLowerCase().includes(ql) ||
+        (CAB_DESCRIPTIONS[c.type] || '').toLowerCase().includes(ql)
+      ) {
+        hits.push({row, cab: c});
+      }
+    });
+  });
+
+  hits.slice(0, 6).forEach(h => {
+    const el = document.createElement('div');
+    el.className = 'search-result-item';
+    el.innerHTML = `<span style="color:#90a4ae;">Cab ${h.cab.cab}</span> ${h.cab.type} <span style="color:#546e7a;">(Row ${h.row.row})</span>`;
+    el.onclick = () => {
+      document.getElementById('searchInput').value = '';
+      res.innerHTML = '';
+      selectCabinet(h.row, h.cab);
+      const el2 = document.getElementById('cab-' + h.row.row + '-' + h.cab.cab);
+      if (el2) el2.scrollIntoView({behavior:'smooth', block:'center'});
+    };
+    res.appendChild(el);
+  });
+
+  // Serial search — check DH2_NODES first
+  if (q.length >= 4) {
+    const localHits = DH2_NODES.filter(n => n.serial.toLowerCase().includes(ql));
+    localHits.slice(0, 4).forEach(n => {
+      let foundRow = null, foundCab = null;
+      ROWS.forEach(row => row.cabinets.forEach(c => {
+        if (c.cab === n.cab) { foundRow = row; foundCab = c; }
+      }));
+      if (!foundRow) return;
+      const feedBadges = n.ups.map(u => `<span style="padding:0 4px;border-radius:3px;font-size:9px;font-weight:700;background:${FEED_E_COLORS[u]}22;color:${FEED_E_COLORS[u]};border:1px solid ${FEED_E_COLORS[u]}44;">${u}</span>`).join(' ');
+      const el2 = document.createElement('div');
+      el2.className = 'search-result-item';
+      el2.innerHTML = `
+        <div style="display:flex;align-items:center;gap:6px;">
+          <span style="font-family:'SF Mono',monospace;color:#6366f1;font-size:10px;">${n.serial}</span>
+          <span style="color:#94a3b8;font-size:10px;">→ Cab ${n.cab}</span>
+        </div>
+        <div style="font-size:10px;color:#94a3b8;margin-top:2px;">U${n.u} &nbsp; ${feedBadges}</div>`;
+      el2.onclick = () => {
+        document.getElementById('searchInput').value = '';
+        res.innerHTML = '';
+        selectCabinet(foundRow, foundCab);
+        const el3 = document.getElementById('cab-' + foundRow.row + '-' + foundCab.cab);
+        if (el3) el3.scrollIntoView({behavior:'smooth', block:'center'});
+      };
+      res.appendChild(el2);
+    });
+  }
+
+  // Serial search — check cache first, then hit NetBox
+  if (q.length >= 4) {
+    // Check serial cache
+    const cached = Object.entries(NB_SERIAL_CACHE).filter(([s]) => s.toLowerCase().includes(ql));
+    cached.slice(0, 4).forEach(([serial, info]) => {
+      addSerialHit(res, serial, info);
+    });
+
+    // Debounced NetBox lookup (only if proxy likely running)
+    if (cached.length === 0 && Object.keys(NB_RACK_INDEX).length > 0) {
+      clearTimeout(_searchTimer);
+      _searchTimer = setTimeout(() => searchNetBoxSerial(q, res), 350);
+    }
+  }
+}
+
+async function searchNetBoxSerial(q, res) {
+  // Don't search if results panel already closed (user cleared input)
+  if (!document.getElementById('searchInput').value) return;
+  try {
+    const devices = await nbFetchAll(
+      '/api/dcim/devices/?serial=' + encodeURIComponent(q) +
+      '&site=' + NB_SITE + '&limit=10'
+    );
+    if (!devices.length) return;
+    devices.forEach(d => {
+      const rackName = d.rack?.name;
+      if (!rackName) return;
+      const cabNum = parseInt(rackName, 10);
+      const info = { cabNum, deviceName: d.name, model: d.device_type?.model || '', position: d.position };
+      NB_SERIAL_CACHE[d.serial] = info;
+      // Only add if results still visible
+      if (document.getElementById('searchInput').value) {
+        addSerialHit(res, d.serial, info);
+      }
+    });
+  } catch(e) { /* proxy offline, silent */ }
+}
+
+function addSerialHit(res, serial, info) {
+  // Find row/cab objects
+  let foundRow = null, foundCab = null;
+  ROWS.forEach(row => row.cabinets.forEach(c => {
+    if (c.cab === info.cabNum) { foundRow = row; foundCab = c; }
+  }));
+  if (!foundRow) return;
+  const el = document.createElement('div');
+  el.className = 'search-result-item';
+  el.innerHTML = `
+    <div style="display:flex;align-items:center;gap:6px;">
+      <span style="font-family:'SF Mono',monospace;color:#6366f1;font-size:10px;">${serial}</span>
+      <span style="color:#94a3b8;font-size:10px;">→ Cab ${info.cabNum}</span>
+    </div>
+    <div style="font-size:10px;color:#94a3b8;">${info.deviceName || ''}${info.model ? ' · ' + info.model : ''}${info.position != null ? ' · U' + info.position : ''}</div>`;
+  el.onclick = () => {
+    document.getElementById('searchInput').value = '';
+    document.getElementById('searchResults').innerHTML = '';
+    selectCabinet(foundRow, foundCab);
+    const el2 = document.getElementById('cab-' + foundRow.row + '-' + foundCab.cab);
+    if (el2) el2.scrollIntoView({behavior:'smooth', block:'center'});
+  };
+  res.appendChild(el);
+}
+
+// ── NetBox Integration ─────────────────────────────────────────────────────
+const NB_BASE     = 'http://localhost:8099'; // proxied via netbox-proxy.py
+const NB_TOKEN    = 'e7413999d0bf411278032ceebb770ad41a3550ab';
+const NB_SITE     = 'us-central-01a';
+const NB_LOCATION = 'data-hall-2';
+
+// cabinet number → NetBox rack ID, built on load
+const NB_RACK_INDEX = {};
+
+async function nbFetchAll(path) {
+  const results = [];
+  let next = NB_BASE + path;
+  while (next) {
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), 5000);
+    let r;
+    try {
+      r = await fetch(next, {
+        headers: { 'Authorization': 'Token ' + NB_TOKEN, 'Accept': 'application/json' },
+        signal: ctrl.signal
+      });
+    } finally {
+      clearTimeout(timer);
+    }
+    if (!r.ok) throw new Error('NetBox HTTP ' + r.status);
+    const data = await r.json();
+    results.push(...(data.results || []));
+    next = data.next || null;
+  }
+  return results;
+}
+
+function nbSetStatus(state, msg) {
+  const el = document.getElementById('nb-status');
+  if (!el) return;
+  if (state === 'live')    { el.innerHTML = '<span class="nb-dot live"></span>NetBox live'; el.style.color = '#22c55e'; el.title = msg || ''; }
+  else if (state === 'loading') { el.innerHTML = '↻ Loading…'; el.style.color = '#94a3b8'; el.title = ''; }
+  else                     { el.innerHTML = '<span class="nb-dot" style="background:#f59e0b"></span>Offline'; el.style.color = '#f59e0b'; el.title = msg || ''; }
+}
+
+function buildEPanelSidebar() {
+  const eList = document.getElementById('feedE-list');
+  if (!eList) return;
+  ['1E','2E','3E','4E'].forEach(upsId => {
+    const color = FEED_E_COLORS[upsId];
+    const cabCount = DH2_EFEED_CABS[upsId] ? DH2_EFEED_CABS[upsId].size : 0;
+    const item = document.createElement('div');
+    item.className = 'panel-item';
+    item.id = 'panel-UPS-' + upsId;
+    item.innerHTML = `
+      <div class="panel-dot" style="background:${color}"></div>
+      <div>
+        <div class="panel-name">UPS-${upsId}</div>
+        <div class="panel-sub">Rows 1–2 &nbsp;•&nbsp; ${cabCount} cabs</div>
+      </div>
+    `;
+    item.onclick = () => selectEPanel(upsId);
+    eList.appendChild(item);
+  });
+}
+
+async function buildRackIndex() {
+  nbSetStatus('loading');
+  try {
+    const racks = await nbFetchAll(
+      '/api/dcim/racks/?site=' + encodeURIComponent(NB_SITE) +
+      '&location=' + encodeURIComponent(NB_LOCATION) + '&limit=200'
+    );
+    racks.forEach(rack => {
+      const num = parseInt(rack.name, 10);
+      if (!isNaN(num)) NB_RACK_INDEX[num] = rack.id;
+    });
+    nbSetStatus('live', racks.length + ' racks indexed — click a cabinet to load devices');
+  } catch (err) {
+    console.warn('NetBox rack index failed:', err.message);
+    nbSetStatus('offline', err.message);
+  }
+}
+
+async function fetchAndShowDevices(cabNum) {
+  const slot = document.getElementById('nb-devices-slot');
+  if (!slot) return;
+  const rackId = NB_RACK_INDEX[cabNum];
+  if (!rackId) { slot.innerHTML = ''; return; }
+  slot.innerHTML = '<div style="padding:8px 0;font-size:11px;color:#94a3b8;">↻ Loading devices…</div>';
+  try {
+    const devices = await nbFetchAll('/api/dcim/devices/?rack_id=' + rackId + '&limit=200');
+    if (!devices.length) { slot.innerHTML = '<div style="font-size:11px;color:#94a3b8;padding:4px 0;">No devices in NetBox for this rack</div>'; return; }
+    devices.sort((a, b) => (a.position || 0) - (b.position || 0));
+    slot.innerHTML = devices.map(d => `
+      <div class="detail-row" style="flex-direction:column;align-items:flex-start;gap:2px;padding:6px 0;">
+        <div style="font-weight:600;font-size:11px;color:#334155;">${d.name || '—'}</div>
+        ${d.device_type?.model ? `<div style="font-size:10px;color:#94a3b8;">${d.device_type.model}${d.device_role?.name ? ' &nbsp;·&nbsp; ' + d.device_role.name : ''}</div>` : ''}
+        ${d.serial ? `<div style="font-size:10px;color:#64748b;font-family:'SF Mono',monospace;">S/N: ${d.serial}</div>` : ''}
+        ${d.position != null ? `<div style="font-size:10px;color:#94a3b8;">U${d.position}</div>` : ''}
+      </div>`).join('');
+  } catch (e) {
+    slot.innerHTML = '<div style="font-size:11px;color:#f59e0b;padding:4px 0;">Could not load devices</div>';
+  }
+}
+
+// ── Init ──────────────────────────────────────────────────────────────────
+
+// ── Export ────────────────────────────────────────────────────────────────
+let _exportFilename = 'dh2-export.csv';
+
+function cabRow(row, c) {
+  const nn = row.panel ? row.panel.padStart(2,'0') : '';
+  const seg = nn && parseInt(nn) <= 4 ? '01' : '02';
+  const pnlC = nn ? 'PNL-IRC-1C-'+nn : '';
+  const pnlD = nn ? 'PNL-IRC-2D-'+nn : '';
+  const bwy  = nn ? 'BUSWAY-1C/2C/3C/4C-'+seg+' + BUSWAY-1D/2D/3D/4D-'+seg : '';
+  return [String(row.row), String(c.cab), c.type, CAB_DESCRIPTIONS[c.type]||c.type, c.cat, row.zone, pnlC, pnlD, bwy];
+}
+
+function getExportRows() {
+  const header = 'row,cabinet,type,description,category,zone,panel_irc_c,panel_irc_d,busway';
+
+  if (selectedFeed) {
+    const rows = [];
+    ROWS.forEach(row => {
+      if (!row.panel) return;
+      row.cabinets.forEach(c => {
+        if (c.cat !== 'empty') rows.push(cabRow(row, c));
+      });
+    });
+    return { title: 'Feed '+selectedFeed+' — All Compute Rows', filename: 'dh2-feed-'+selectedFeed+'.csv', header, rows };
+  }
+
+  if (selectedPanel) {
+    const nn = selectedPanel.replace(/^[12][CD]-/,'');
+    const row = ROWS.find(r => r.panel === nn);
+    if (!row) return null;
+    const rows = row.cabinets.filter(c => c.cat !== 'empty').map(c => cabRow(row, c));
+    return { title: 'Row '+row.row+' (Panel '+selectedPanel+')', filename: 'dh2-panel-'+selectedPanel.replace(/[^a-zA-Z0-9]/g,'-')+'.csv', header, rows };
+  }
+
+  if (selectedCab) {
+    const row = selectedCab.row;
+    const cab = selectedCab.cab;
+    const rows = [cabRow(row, cab)];
+    return { title: 'Cabinet '+cab.cab, filename: 'dh2-cab-'+cab.cab+'.csv', header, rows };
+  }
+
+  return null;
+}
+
+async function showExportModal() {
+  const btn = document.getElementById('ex-copy-btn');
+  btn.textContent = 'Copy to Clipboard'; btn.classList.remove('copied');
+
+  // Cabinet export: fetch live device data from NetBox
+  if (selectedCab) {
+    const row = selectedCab.row;
+    const cab = selectedCab.cab;
+    _exportFilename = 'dh2-cab-' + cab.cab + '.csv';
+    document.getElementById('ex-title').textContent = 'Cabinet ' + cab.cab + ' — Export';
+    document.getElementById('ex-count').textContent = 'Fetching devices…';
+    document.getElementById('ex-textarea').value = '';
+    document.getElementById('export-modal').classList.add('open');
+
+    const CAB_HEADER = 'row,cabinet,type,description,category,zone,panel_irc_c,panel_irc_d,busway,device_name,model,role,serial,u_position';
+    const staticCols = cabRow(row, cab);
+    let rows = [];
+
+    const rackId = NB_RACK_INDEX[cab.cab];
+    if (rackId) {
+      try {
+        const devices = await nbFetchAll('/api/dcim/devices/?rack_id=' + rackId + '&limit=200');
+        devices.sort((a, b) => (a.position || 0) - (b.position || 0));
+        rows = devices.map(d => [
+          ...staticCols,
+          d.name || '',
+          d.device_type?.model || '',
+          d.device_role?.name || '',
+          d.serial || '',
+          d.position != null ? String(d.position) : ''
+        ]);
+      } catch (e) { /* fall through to static-only */ }
+    }
+    if (!rows.length) rows = [[...staticCols, '', '', '', '', '']];
+
+    document.getElementById('ex-count').textContent = rows.length + ' device' + (rows.length !== 1 ? 's' : '');
+    document.getElementById('ex-textarea').value = CAB_HEADER + '\n' +
+      rows.map(r => r.map(v => (v && String(v).includes(',')) ? '"'+v+'"' : (v||'')).join(',')).join('\n');
+    return;
+  }
+
+  // Feed / panel exports (synchronous)
+  const data = getExportRows();
+  if (!data || !data.rows.length) { alert('Select a feed, IRC panel, or cabinet first.'); return; }
+  _exportFilename = data.filename;
+  document.getElementById('ex-title').textContent = data.title + ' — Export';
+  document.getElementById('ex-count').textContent = data.rows.length + ' cabinet' + (data.rows.length!==1?'s':'');
+  document.getElementById('ex-textarea').value = data.header + '\n' +
+    data.rows.map(r => r.map(v => (v&&v.includes(',')) ? '"'+v+'"' : (v||'')).join(',')).join('\n');
+  document.getElementById('export-modal').classList.add('open');
+}
+function closeExportModal() { document.getElementById('export-modal').classList.remove('open'); }
+
+function copyExport() {
+  navigator.clipboard.writeText(document.getElementById('ex-textarea').value).then(() => {
+    const btn = document.getElementById('ex-copy-btn');
+    btn.textContent = '✓ Copied!'; btn.classList.add('copied');
+    setTimeout(() => { btn.textContent='Copy to Clipboard'; btn.classList.remove('copied'); }, 2000);
+  });
+}
+
+function downloadExport() {
+  const blob = new Blob([document.getElementById('ex-textarea').value], {type:'text/csv'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = _exportFilename;
+  a.click();
+  URL.revokeObjectURL(a.href);
+}
+// ─────────────────────────────────────────────────────────────────────────
+
+
+// ── Keyboard shortcuts ────────────────────────────────────────────────────
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') {
+    const modal = document.getElementById('export-modal');
+    if (modal && modal.classList.contains('open')) { closeExportModal(); return; }
+    clearSelection();
+  }
+  if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+    e.preventDefault();
+    const inp = document.getElementById('searchInput');
+    if (inp) { inp.focus(); inp.select(); }
+  }
+});
+// ─────────────────────────────────────────────────────────────────────────
+
+buildPanelSidebar();
+buildEPanelSidebar();
+buildFloorPlan();
+clearSelection();
+buildRackIndex();
+
+// Auto-refresh NetBox every 60 seconds
+setInterval(async () => {
+  await buildRackIndex();
+  if (selectedCab) fetchAndShowDevices(selectedCab.cab);
+}, 30000);
+</script>
+<div id="export-modal" onclick="if(event.target===this)closeExportModal()">
+  <div id="export-box">
+    <div class="ex-head">
+      <div>
+        <div class="ex-title" id="ex-title">Export</div>
+        <div class="ex-count" id="ex-count"></div>
+      </div>
+      <button class="ex-close" onclick="closeExportModal()">&#10005;</button>
+    </div>
+    <textarea id="ex-textarea" readonly spellcheck="false"></textarea>
+    <div class="ex-actions">
+      <button class="ex-btn ex-btn-copy" id="ex-copy-btn" onclick="copyExport()">Copy to Clipboard</button>
+      <button class="ex-btn ex-btn-dl" onclick="downloadExport()">&#8595; Download CSV</button>
+    </div>
+  </div>
+</div>
+
+<script>
+var jiraMap = {};
+var jiraHighlight = false;
+var jiraStatusFilter = null;
+
+function applyJiraHighlight() {
+  if (jiraStatusFilter) return;
+  document.querySelectorAll('.cab').forEach(function(el) {
+    el.classList.remove('highlighted', 'dimmed');
+    if (!jiraHighlight) return;
+    var cab = el.dataset.cab;
+    if (jiraMap[cab] && jiraMap[cab].length) {
+      el.classList.add('highlighted');
+    } else {
+      el.classList.add('dimmed');
+    }
+  });
+}
+
+function buildJiraStatusSummary() {
+  var el = document.getElementById('jira-status-summary');
+  if (!el) return;
+  var racks = Object.keys(jiraMap);
+  if (!racks.length) { el.style.display = 'none'; return; }
+  var byStatus = {};
+  racks.forEach(function(rack) {
+    jiraMap[rack].forEach(function(t) {
+      if (!byStatus[t.status]) byStatus[t.status] = {};
+      if (!byStatus[t.status][t.key]) byStatus[t.status][t.key] = { ticket: t, racks: [] };
+      byStatus[t.status][t.key].racks.push(rack);
+    });
+  });
+  var totalTickets = 0;
+  Object.keys(byStatus).forEach(function(s) { totalTickets += Object.keys(byStatus[s]).length; });
+  var html = '<div class="js-header"><span>&#128204; Jira Tickets</span><span>' + totalTickets + ' open &middot; ' + racks.length + ' racks</span></div>';
+  var statuses = Object.keys(byStatus).sort(function(a, b) {
+    function pri(s) { return JIRA_RED.indexOf(s) >= 0 ? 0 : JIRA_BLUE.indexOf(s) >= 0 ? 1 : 2; }
+    return pri(a) - pri(b);
+  });
+  statuses.forEach(function(status) {
+    var ticketMap = byStatus[status];
+    var rackSet = [];
+    Object.keys(ticketMap).forEach(function(k) {
+      ticketMap[k].racks.forEach(function(r) { if (rackSet.indexOf(r) === -1) rackSet.push(r); });
+    });
+    var dotClass = JIRA_RED.indexOf(status) >= 0 ? 'red' : JIRA_BLUE.indexOf(status) >= 0 ? 'blue' : 'green';
+    var isActive = jiraStatusFilter === 'status:' + status;
+    html += '<div class="js-status-row' + (isActive ? ' active' : '') + '" data-status="' + status.replace(/"/g, '&quot;') + '" onclick="handleStatusClick(this)">'
+      + '<div class="js-dot ' + dotClass + '"></div>'
+      + '<span class="js-status-name">' + status + '</span>'
+      + '<span class="js-count">' + rackSet.length + ' rack' + (rackSet.length !== 1 ? 's' : '') + '</span>'
+      + '</div><div class="js-tickets">';
+    Object.keys(ticketMap).forEach(function(key) {
+      var info = ticketMap[key];
+      var rackLabel = info.racks.map(function(r) { return 'R' + r; }).join(', ');
+      var isTicketActive = jiraStatusFilter === 'ticket:' + key;
+      html += '<div class="js-ticket' + (isTicketActive ? ' active' : '') + '">'
+        + '<a class="js-ticket-key" href="https://coreweave.atlassian.net/browse/' + key + '" target="_blank">' + key + '</a>'
+        + '<span class="js-ticket-sum" title="' + info.ticket.summary.replace(/"/g, '&quot;') + '">' + info.ticket.summary.slice(0, 45) + '</span>'
+        + '<span class="js-ticket-cabs" data-key="' + key + '" data-racks="' + info.racks.join(',') + '" onclick="event.stopPropagation();handleTicketCabClick(this)">' + rackLabel + '</span>'
+        + '</div>';
+    });
+    html += '</div>';
+  });
+  el.innerHTML = html;
+  el.style.display = '';
+}
+
+function handleStatusClick(el) {
+  var status = el.dataset.status;
+  var key = 'status:' + status;
+  if (jiraStatusFilter === key) { jiraStatusFilter = null; clearJiraFilter(); }
+  else {
+    jiraStatusFilter = key;
+    var cabs = Object.keys(jiraMap).filter(function(rack) {
+      return jiraMap[rack].some(function(t) { return t.status === status; });
+    });
+    highlightCabsJira(cabs);
+  }
+  buildJiraStatusSummary();
+}
+
+function handleTicketCabClick(el) {
+  var key = el.dataset.key;
+  var racks = el.dataset.racks.split(',');
+  var fKey = 'ticket:' + key;
+  if (jiraStatusFilter === fKey) { jiraStatusFilter = null; clearJiraFilter(); }
+  else { jiraStatusFilter = fKey; highlightCabsJira(racks); }
+  buildJiraStatusSummary();
+}
+
+function highlightCabsJira(racks) {
+  var rackSet = {};
+  racks.forEach(function(r) { rackSet[String(r)] = true; });
+  document.querySelectorAll('.cab').forEach(function(el) {
+    if (rackSet[String(el.dataset.cab)]) {
+      el.classList.add('highlighted'); el.classList.remove('dimmed');
+    } else {
+      el.classList.add('dimmed'); el.classList.remove('highlighted');
+    }
+  });
+}
+
+function clearJiraFilter() {
+  document.querySelectorAll('.cab').forEach(function(el) { el.classList.remove('highlighted', 'dimmed'); });
+  applyJiraHighlight();
+}
+
+var JIRA_RED   = ['Waiting for Support','Awaiting Support','Awaiting Triage','RMA System Prep Needed','RMA System Return'];
+var JIRA_BLUE  = ['In Progress'];
+// Green statuses: Customer Verification, RMA - OEM Engaged, Waiting for Customer, RMA, On hold, Verification
+
+function jiraBadgeClass(tickets) {
+  var statuses = tickets.map(function(t) { return t.status; });
+  if (statuses.some(function(s) { return JIRA_RED.indexOf(s) >= 0; })) return 'red';
+  if (statuses.some(function(s) { return JIRA_BLUE.indexOf(s) >= 0; })) return 'blue';
+  return 'green';
+}
+
+function applyJiraBadges() {
+  document.querySelectorAll('.jira-badge').forEach(function(b) { b.remove(); });
+  Object.keys(jiraMap).forEach(function(rack) {
+    var tickets = jiraMap[rack];
+    var el = document.querySelector('.cab[data-cab="' + rack + '"]');
+    if (!el) return;
+    var badge = document.createElement('div');
+    badge.className = 'jira-badge ' + jiraBadgeClass(tickets);
+    badge.textContent = tickets.length;
+    badge.title = tickets.length + ' open Jira ticket' + (tickets.length > 1 ? 's' : '');
+    el.appendChild(badge);
+  });
+}
+
+function jiraTicketHtml(cabNum) {
+  var tickets = jiraMap[cabNum] || [];
+  if (!tickets.length) return '';
+  var rows = tickets.map(function(t) {
+    return '<div class="jira-ticket-item">'
+      + '<a class="jira-ticket-key" href="https://coreweave.atlassian.net/browse/' + t.key + '" target="_blank">' + t.key + '</a>'
+      + '<span class="jira-ticket-sum">' + (t.summary || '').slice(0, 80) + '</span>'
+      + '<span class="jira-ticket-status">' + t.status + '</span>'
+      + '</div>';
+  }).join('');
+  return '<div class="jira-ticket-section"><h3>&#128204; Open Jira Tickets (' + tickets.length + ')</h3>' + rows + '</div>';
+}
+
+window.addEventListener("message", function(e) {
+  if (!e.data) return;
+  if (e.data.type === "setTheme") {
+    var el = document.getElementById("_t");
+    if (!el) { el = document.createElement("style"); el.id = "_t"; document.head.appendChild(el); }
+    el.textContent = e.data.css || "";
+  }
+  if (e.data.type === "jiraData") {
+    jiraMap = e.data.map || {};
+    applyJiraBadges();
+    applyJiraHighlight();
+    buildJiraStatusSummary();
+  }
+  if (e.data.type === "highlightJira") {
+    jiraHighlight = e.data.on;
+    applyJiraHighlight();
+  }
+  if (e.data.type === "highlightCabsJira") {
+    jiraStatusFilter = 'external';
+    highlightCabsJira(e.data.racks || []);
+  }
+  if (e.data.type === "clearJiraFilter") {
+    jiraStatusFilter = null;
+    clearJiraFilter();
+  }
+});
+
+// ── Zoom ──────────────────────────────────────────────────────────────────
+var zoomLevel = 1.0;
+var ZOOM_MIN = 0.3, ZOOM_MAX = 2.5;
+
+function applyZoom() {
+  document.getElementById('floorPlan').style.zoom = zoomLevel;
+  document.getElementById('zoom-level').textContent = Math.round(zoomLevel * 100) + '%';
+}
+function adjustZoom(delta) {
+  zoomLevel = Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, Math.round((zoomLevel + delta) * 10) / 10));
+  applyZoom();
+}
+function resetZoom() { zoomLevel = 1.0; applyZoom(); }
+applyZoom();
+</script>
+</body>
+</html>

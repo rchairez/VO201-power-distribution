@@ -1,0 +1,385 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Jira API Test — VO201</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, 'Segoe UI', system-ui, sans-serif; background: #0d1117; color: #c9d1d9; padding: 32px; }
+  h1 { font-size: 18px; font-weight: 700; color: #e6edf3; margin-bottom: 6px; }
+  .sub { font-size: 12px; color: #6e7681; margin-bottom: 28px; }
+  .card { background: #161b22; border: 1px solid #30363d; border-radius: 10px; padding: 20px; margin-bottom: 16px; }
+  .card h2 { font-size: 12px; font-weight: 700; color: #8b949e; text-transform: uppercase; letter-spacing: 0.8px; margin-bottom: 14px; }
+  label { display: block; font-size: 12px; color: #8b949e; margin-bottom: 5px; margin-top: 12px; }
+  label:first-of-type { margin-top: 0; }
+  input { width: 100%; background: #0d1117; border: 1px solid #30363d; border-radius: 6px; color: #c9d1d9; padding: 8px 12px; font-size: 13px; outline: none; font-family: inherit; }
+  input:focus { border-color: #388bfd; box-shadow: 0 0 0 3px rgba(56,139,253,0.15); }
+  input[type=password] { font-family: monospace; letter-spacing: 1px; }
+  .btn-row { display: flex; gap: 10px; margin-top: 16px; }
+  button { padding: 8px 18px; border-radius: 6px; font-size: 13px; font-weight: 600; cursor: pointer; border: none; transition: all 0.15s; font-family: inherit; }
+  .btn-primary { background: #238636; color: #fff; }
+  .btn-primary:hover { background: #2ea043; }
+  .btn-primary:disabled { background: #1a3a20; color: #4a7a50; cursor: not-allowed; }
+  .btn-sec { background: #21262d; color: #c9d1d9; border: 1px solid #30363d; }
+  .btn-sec:hover { background: #30363d; }
+  .status { font-size: 12px; margin-top: 10px; padding: 8px 12px; border-radius: 6px; display: none; }
+  .status.ok { background: #0d2218; border: 1px solid #1a5c2e; color: #3fb950; display: block; }
+  .status.err { background: #2d0a0a; border: 1px solid #5c1a1a; color: #f85149; display: block; }
+  .status.loading { background: #1a1f28; border: 1px solid #30363d; color: #8b949e; display: block; }
+  .results { margin-top: 16px; }
+  .result-section { margin-bottom: 20px; }
+  .result-section h3 { font-size: 13px; font-weight: 700; color: #e6edf3; margin-bottom: 10px; }
+  .stat-row { display: flex; gap: 16px; margin-bottom: 12px; flex-wrap: wrap; }
+  .stat { background: #1c2128; border: 1px solid #30363d; border-radius: 8px; padding: 10px 16px; min-width: 100px; }
+  .stat-num { font-size: 26px; font-weight: 800; color: #e6edf3; letter-spacing: -1px; }
+  .stat-lbl { font-size: 11px; color: #6e7681; margin-top: 2px; }
+  table { width: 100%; border-collapse: collapse; font-size: 11px; }
+  th { text-align: left; padding: 6px 10px; font-size: 10px; font-weight: 700; color: #6e7681; text-transform: uppercase; letter-spacing: 0.6px; border-bottom: 1px solid #30363d; }
+  td { padding: 6px 10px; border-bottom: 1px solid #21262d; vertical-align: top; }
+  tr:last-child td { border-bottom: none; }
+  tr:hover td { background: #1c2128; }
+  .tag { display: inline-block; background: #1c2128; border: 1px solid #30363d; border-radius: 4px; padding: 1px 6px; font-size: 10px; font-family: monospace; color: #79c0ff; margin: 1px; }
+  .tag.rack { background: #0d2034; border-color: #1a4a7a; color: #58a6ff; font-weight: 700; }
+  .pri-high { color: #f85149; font-weight: 700; }
+  .pri-med  { color: #d29922; font-weight: 700; }
+  .pri-low  { color: #3fb950; }
+  .status-badge { display: inline-block; padding: 1px 7px; border-radius: 10px; font-size: 10px; font-weight: 600; }
+  .s-open { background: #0d2218; color: #3fb950; }
+  .s-inprog { background: #1a2d0a; color: #7ee787; }
+  .s-other { background: #21262d; color: #8b949e; }
+  .rack-map { display: flex; flex-wrap: wrap; gap: 6px; }
+  .rack-chip { background: #0d2034; border: 1px solid #1a4a7a; border-radius: 5px; padding: 4px 8px; font-size: 11px; font-family: monospace; cursor: default; }
+  .rack-chip span { background: #f85149; color: #fff; border-radius: 8px; padding: 1px 6px; font-size: 10px; margin-left: 5px; font-weight: 700; }
+  .rack-chip.warn span { background: #d29922; }
+  .rack-chip.ok span { background: #238636; }
+  pre { background: #0d1117; border: 1px solid #30363d; border-radius: 6px; padding: 12px; font-size: 11px; overflow: auto; max-height: 300px; color: #8b949e; }
+  .cors-note { background: #1a1208; border: 1px solid #4a3008; border-radius: 8px; padding: 14px; font-size: 12px; color: #d29922; line-height: 1.7; margin-top: 12px; display: none; }
+  .cors-note code { background: #0d1117; border: 1px solid #30363d; border-radius: 4px; padding: 2px 6px; font-family: monospace; font-size: 11px; }
+</style>
+</head>
+<body>
+<h1>Jira API Test — VO201 Power Distribution</h1>
+<p class="sub">Test your Jira credentials and preview what data will be pulled before integrating into the main app.</p>
+
+<div class="card">
+  <h2>Credentials</h2>
+  <label>Jira Email</label>
+  <input type="email" id="email" value="rchairez@coreweave.com" placeholder="you@company.com">
+  <label>API Token</label>
+  <input type="password" id="token" placeholder="Paste your Jira API token here">
+  <p style="font-size:11px;color:#6e7681;margin-top:6px;">Your token is only used in this browser — it's never sent anywhere except directly to coreweave.atlassian.net.</p>
+  <div class="btn-row">
+    <button class="btn-primary" id="run-btn" onclick="runTest()">Run Test</button>
+    <button class="btn-sec" onclick="clearAll()">Clear</button>
+  </div>
+  <div style="margin-top:14px;border-top:1px solid #30363d;padding-top:14px;">
+    <label>Inspect a specific ticket</label>
+    <div style="display:flex;gap:8px;margin-top:6px;">
+      <input type="text" id="inspect-key" placeholder="e.g. SDA-40337" style="width:180px;">
+      <button class="btn-sec" onclick="inspectTicket()">Inspect</button>
+      <button class="btn-sec" onclick="inspectRackOnly()">Rack Fields Only</button>
+    </div>
+    <pre id="inspect-out" style="margin-top:10px;background:#0d1117;border:1px solid #30363d;border-radius:6px;padding:12px;font-size:11px;max-height:400px;overflow:auto;display:none;color:#8b949e;"></pre>
+  </div>
+  <div class="status" id="status"></div>
+  <div class="cors-note" id="cors-note">
+    <strong>CORS blocked</strong> — browsers block API calls from <code>file://</code> pages to external domains.<br>
+    Fix: serve this folder over HTTP instead. Open a terminal in the project folder and run:<br><br>
+    <code>python3 -m http.server 8080</code><br><br>
+    Then open <code>http://localhost:8080/jira-test.html</code>
+  </div>
+</div>
+
+<div class="results" id="results" style="display:none">
+  <div class="card result-section" id="sec-dh1"></div>
+  <div class="card result-section" id="sec-dh2"></div>
+  <div class="card result-section" id="sec-raw">
+    <h2>Sample Raw Ticket (first result)</h2>
+    <pre id="raw-json">—</pre>
+  </div>
+</div>
+
+<script>
+const BASE = 'http://localhost:8098';
+const RACK_RE = /US-VO201\.DH[12]\.R(\d+)/i;
+
+function auth() {
+  const e = document.getElementById('email').value.trim();
+  const t = document.getElementById('token').value.trim();
+  return 'Basic ' + btoa(e + ':' + t);
+}
+
+function setStatus(msg, type) {
+  const el = document.getElementById('status');
+  el.textContent = msg;
+  el.className = 'status ' + type;
+}
+
+async function jiraSearch(jql, fields) {
+  const url = BASE + '/rest/api/3/search/jql?jql=' + encodeURIComponent(jql)
+    + '&fields=' + fields + '&maxResults=500&startAt=0';
+  const r = await fetch(url, {
+    headers: { 'Authorization': auth(), 'Accept': 'application/json' }
+  });
+  if (!r.ok) throw new Error('HTTP ' + r.status + ' — ' + (await r.text()).slice(0, 200));
+  const data = await r.json();
+  if (data.total === undefined) data.total = data.issues?.length ?? 0;
+  return data;
+}
+
+async function getMatchingLabels(prefix) {
+  const url = BASE + '/rest/api/3/label?query=' + encodeURIComponent(prefix) + '&maxResults=200';
+  const r = await fetch(url, {
+    headers: { 'Authorization': auth(), 'Accept': 'application/json' }
+  });
+  if (!r.ok) return [];
+  const data = await r.json();
+  // Filter to only labels that start with our prefix
+  return (data.values || []).filter(l => l.startsWith(prefix));
+}
+
+function buildRackMap(issues) {
+  const map = {};
+  issues.forEach(iss => {
+    // Try customfield_10207 first, then labels, then summary
+    const sources = [
+      ...(iss.fields.customfield_10207 || []),
+      ...(iss.fields.labels || []),
+      iss.fields.summary || ''
+    ];
+    const seen = new Set();
+    sources.forEach(src => {
+      let match;
+      const re = /US-VO201\.DH[12]\.R(\d+)/gi;
+      while ((match = re.exec(src)) !== null) {
+        const rack = parseInt(match[1]);
+        if (seen.has(rack)) continue;
+        seen.add(rack);
+        if (!map[rack]) map[rack] = [];
+        map[rack].push({
+          key: iss.key,
+          summary: iss.fields.summary,
+          status: iss.fields.status?.name || '?',
+          priority: iss.fields.priority?.name || '?',
+          label: match[0]
+        });
+      }
+    });
+  });
+  return map;
+}
+
+function renderSection(el, title, color, data, rackMap, totalIssues) {
+  const rackCount = Object.keys(rackMap).length;
+  const ticketCount = Object.values(rackMap).reduce((s, a) => s + a.length, 0);
+
+  const topRacks = Object.entries(rackMap)
+    .sort((a, b) => b[1].length - a[1].length)
+    .slice(0, 50);
+
+  const sampleTickets = data.slice(0, 20);
+
+  el.innerHTML = `
+    <h2 style="color:${color}">${title}</h2>
+    <div class="stat-row">
+      <div class="stat"><div class="stat-num">${totalIssues}</div><div class="stat-lbl">Total open tickets</div></div>
+      <div class="stat"><div class="stat-num">${rackCount}</div><div class="stat-lbl">Racks affected</div></div>
+      <div class="stat"><div class="stat-num">${ticketCount}</div><div class="stat-lbl">Tickets with rack label</div></div>
+      <div class="stat"><div class="stat-num">${totalIssues - ticketCount}</div><div class="stat-lbl">Tickets without rack label</div></div>
+    </div>
+
+    ${(() => {
+      const allLabels = [...new Set(data.flatMap(i => i.fields.customfield_10207 || []))].sort();
+      const vo201Labels = allLabels.filter(l => l.toLowerCase().includes('vo201'));
+      return allLabels.length ? `
+        <h3 style="font-size:12px;color:#8b949e;margin-bottom:8px;margin-top:16px;">All unique labels on returned tickets</h3>
+        <div style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:12px;">
+          ${allLabels.map(l => `<span class="tag ${vo201Labels.includes(l)?'rack':''}">${l}</span>`).join('')}
+        </div>` : '';
+    })()}
+    ${rackCount > 0 ? `
+    <h3 style="font-size:12px;color:#8b949e;margin-bottom:8px;margin-top:16px;">Racks with open tickets (top 50)</h3>
+    <div class="rack-map">
+      ${topRacks.map(([rack, tickets]) => {
+        const cls = tickets.length >= 6 ? '' : tickets.length >= 3 ? 'warn' : 'ok';
+        return `<div class="rack-chip ${cls}">R${rack}<span>${tickets.length}</span></div>`;
+      }).join('')}
+    </div>` : '<p style="font-size:12px;color:#6e7681;margin-top:8px;">No rack-labelled tickets found. Check that labels follow the pattern <code style="font-family:monospace">US-VO201.DH1.R{N}</code></p>'}
+
+    <h3 style="font-size:12px;color:#8b949e;margin-bottom:8px;margin-top:16px;">Sample tickets (first 20)</h3>
+    <table>
+      <thead><tr><th>Key</th><th>Summary</th><th>Status</th><th>Priority</th><th>Rack Labels</th></tr></thead>
+      <tbody>
+        ${sampleTickets.map(iss => {
+          const labels = (iss.fields.customfield_10207 || []);
+          const rackLabels = labels.filter(l => RACK_RE.test(l));
+          const priClass = /high|critical|blocker/i.test(iss.fields.priority?.name||'') ? 'pri-high'
+                         : /medium/i.test(iss.fields.priority?.name||'') ? 'pri-med' : 'pri-low';
+          const stCls = /open|to do/i.test(iss.fields.status?.name||'') ? 's-open'
+                      : /progress/i.test(iss.fields.status?.name||'') ? 's-inprog' : 's-other';
+          return `<tr>
+            <td><a href="${BASE}/browse/${iss.key}" target="_blank" style="color:#58a6ff;text-decoration:none;">${iss.key}</a></td>
+            <td style="max-width:260px;">${iss.fields.summary || '—'}</td>
+            <td><span class="status-badge ${stCls}">${iss.fields.status?.name || '?'}</span></td>
+            <td class="${priClass}">${iss.fields.priority?.name || '?'}</td>
+            <td>${rackLabels.length ? rackLabels.map(l => `<span class="tag rack">${l}</span>`).join('') : labels.slice(0,3).map(l=>`<span class="tag">${l}</span>`).join('') || '—'}</td>
+          </tr>`;
+        }).join('')}
+      </tbody>
+    </table>
+  `;
+}
+
+async function runTest() {
+  const btn = document.getElementById('run-btn');
+  btn.disabled = true;
+  btn.textContent = 'Testing…';
+  document.getElementById('cors-note').style.display = 'none';
+  document.getElementById('results').style.display = 'none';
+  setStatus('Connecting to Jira…', 'loading');
+
+  try {
+    setStatus('Fetching DH1 (SDA) VO201 tickets…', 'loading');
+    const dh1Raw = await jiraSearch(
+      'project = SDA AND cf[10194] = "ORD3" AND cf[10207] is not EMPTY AND statusCategory != "Done" ORDER BY created DESC',
+      'summary,status,priority,customfield_10207'
+    );
+    const dh1 = { ...dh1Raw, issues: dh1Raw.issues.filter(i => (i.fields.customfield_10207 || []).some(l => /US-VO201\.DH1/i.test(l))) };
+    dh1.total = dh1.issues.length;
+
+    setStatus('Fetching DH2 (DO) VO201 tickets…', 'loading');
+    const dh2Raw = await jiraSearch(
+      'project = "DO" AND text ~ "US-VO201" AND statusCategory != "Done" ORDER BY created DESC',
+      'summary,status,priority,customfield_10207,labels'
+    );
+    // Filter client-side to DH2 only — check customfield_10207, labels, and description text
+    const dh2 = { ...dh2Raw, issues: dh2Raw.issues.filter(i =>
+      (i.fields.customfield_10207 || []).some(l => /US-VO201\.DH2/i.test(l)) ||
+      (i.fields.labels || []).some(l => /US-VO201\.DH2/i.test(l))
+    )};
+    dh2.total = dh2.issues.length;
+
+    setStatus(`✓ Connected — ${dh1.total} open SDA tickets, ${dh2.total} open DO tickets`, 'ok');
+
+    const map1 = buildRackMap(dh1.issues);
+    const map2 = buildRackMap(dh2.issues);
+
+    renderSection(document.getElementById('sec-dh1'), 'DH1 — Albatross (SDA)', '#6366f1', dh1.issues, map1, dh1.total);
+    renderSection(document.getElementById('sec-dh2'), 'DH2 — Phoenix (DO)', '#e94560', dh2.issues, map2, dh2.total);
+
+    // Fetch specific ticket SDA-40150 to inspect all fields
+    const specificRes = await fetch(BASE + '/rest/api/3/issue/SDA-40150?fields=*all', {
+      headers: { 'Authorization': auth(), 'Accept': 'application/json' }
+    });
+    const specific = await specificRes.json();
+    // Filter to only non-null, non-empty fields
+    const fields = specific.fields || {};
+    const nonEmpty = Object.entries(fields).filter(([k, v]) => {
+      if (v === null || v === undefined) return false;
+      if (Array.isArray(v) && v.length === 0) return false;
+      if (typeof v === 'object' && !Array.isArray(v) && Object.keys(v).length === 0) return false;
+      if (v === '' || v === 0) return false;
+      return true;
+    });
+    document.getElementById('raw-json').textContent =
+      '=== SDA-40150 (non-null fields only) ===\n' +
+      JSON.stringify(Object.fromEntries(nonEmpty), null, 2);
+
+    document.getElementById('results').style.display = 'block';
+  } catch (e) {
+    const isCors = e.message.includes('Failed to fetch') || e.message.includes('NetworkError');
+    setStatus((isCors ? 'CORS/network error — see note below' : 'Error: ' + e.message), 'err');
+    if (isCors) document.getElementById('cors-note').style.display = 'block';
+    console.error(e);
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Run Test';
+  }
+}
+
+async function inspectRackOnly() {
+  const key = document.getElementById('inspect-key').value.trim();
+  const out = document.getElementById('inspect-out');
+  if (!key) return;
+  out.style.display = 'block';
+  out.textContent = 'Fetching ' + key + '…';
+  try {
+    const [issueRes, fieldsRes] = await Promise.all([
+      fetch(BASE + '/rest/api/3/issue/' + key + '?fields=*all', {
+        headers: { 'Authorization': auth(), 'Accept': 'application/json' }
+      }),
+      fetch(BASE + '/rest/api/3/field', {
+        headers: { 'Authorization': auth(), 'Accept': 'application/json' }
+      })
+    ]);
+    const data = await issueRes.json();
+    const fieldMeta = await fieldsRes.json();
+    if (!issueRes.ok) { out.textContent = JSON.stringify(data, null, 2); return; }
+    const nameMap = {};
+    if (Array.isArray(fieldMeta)) fieldMeta.forEach(f => { nameMap[f.id] = f.name; });
+    const fields = data.fields || {};
+    // Show only fields whose name or value contains rack/location/VO201/asset/site keywords
+    const nameKeywords = ['rack', 'location', 'asset', 'serial', 'tag', 'organization', 'data center', 'datacenter', 'site', 'ip'];
+    const relevant = Object.entries(fields)
+      .filter(([k, v]) => {
+        if (v === null || v === undefined) return false;
+        if (Array.isArray(v) && v.length === 0) return false;
+        if (v === '' || v === 0) return false;
+        const name = (nameMap[k] || k).toLowerCase();
+        // Only match on field NAME, not value — avoids false positives from issuelinks
+        return nameKeywords.some(kw => name.includes(kw));
+      })
+      .map(([k, v]) => [nameMap[k] ? `${k} (${nameMap[k]})` : k, v]);
+    out.textContent = relevant.length
+      ? JSON.stringify(Object.fromEntries(relevant), null, 2)
+      : 'No rack/location/asset fields found with values.';
+  } catch(e) { out.textContent = 'Error: ' + e.message; }
+}
+
+async function inspectTicket() {
+  const key = document.getElementById('inspect-key').value.trim();
+  const out = document.getElementById('inspect-out');
+  if (!key) return;
+  out.style.display = 'block';
+  out.textContent = 'Fetching ' + key + '…';
+  try {
+    // Also fetch field metadata to resolve customfield IDs to names
+    const [issueRes, fieldsRes] = await Promise.all([
+      fetch(BASE + '/rest/api/3/issue/' + key + '?fields=*all', {
+        headers: { 'Authorization': auth(), 'Accept': 'application/json' }
+      }),
+      fetch(BASE + '/rest/api/3/field', {
+        headers: { 'Authorization': auth(), 'Accept': 'application/json' }
+      })
+    ]);
+    const data = await issueRes.json();
+    const fieldMeta = await fieldsRes.json();
+    if (!issueRes.ok) { out.textContent = JSON.stringify(data, null, 2); return; }
+
+    // Build id→name map
+    const nameMap = {};
+    if (Array.isArray(fieldMeta)) fieldMeta.forEach(f => { nameMap[f.id] = f.name; });
+
+    const fields = data.fields || {};
+    const nonEmpty = Object.entries(fields)
+      .filter(([k, v]) => {
+        if (v === null || v === undefined) return false;
+        if (Array.isArray(v) && v.length === 0) return false;
+        if (v === '' || v === 0) return false;
+        return true;
+      })
+      .map(([k, v]) => [nameMap[k] ? `${k} (${nameMap[k]})` : k, v]);
+
+    out.textContent = JSON.stringify(Object.fromEntries(nonEmpty), null, 2);
+  } catch(e) { out.textContent = 'Error: ' + e.message; }
+}
+
+function clearAll() {
+  document.getElementById('token').value = '';
+  document.getElementById('status').className = 'status';
+  document.getElementById('results').style.display = 'none';
+  document.getElementById('cors-note').style.display = 'none';
+}
+</script>
+</body>
+</html>

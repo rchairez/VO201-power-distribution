@@ -1,0 +1,745 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ORD3 Data Hall 2 (Volo II / Chirisa) — Power Distribution</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: #f0f2f8; color: #1e2a3a; font-family: -apple-system, 'Segoe UI', system-ui, sans-serif; font-size: 13px; display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
+
+  .header { background: #ffffff; padding: 11px 18px; border-bottom: 1px solid rgba(0,0,0,0.08); display: flex; align-items: center; gap: 16px; flex-shrink: 0; box-shadow: 0 1px 3px rgba(0,0,0,0.06); }
+  .header h1 { font-size: 15px; font-weight: 700; color: #1e2a3a; letter-spacing: -0.2px; }
+  .header .subtitle { font-size: 11px; color: #94a3b8; margin-top: 2px; }
+  .legend { display: flex; gap: 12px; margin-left: auto; align-items: center; }
+  .legend-item { display: flex; align-items: center; gap: 5px; font-size: 11px; color: #64748b; }
+  .legend-item.clickable { cursor: pointer; padding: 4px 7px; border-radius: 5px; border: 1px solid transparent; transition: all 0.12s; }
+  .legend-item.clickable:hover { background: rgba(0,0,0,0.05); border-color: rgba(0,0,0,0.08); }
+  .legend-item.feed-active { background: rgba(99,102,241,0.1); border-color: rgba(99,102,241,0.3) !important; font-weight: 700; }
+  .legend-dot { width: 10px; height: 10px; border-radius: 3px; }
+
+  .layout { display: flex; flex: 1; overflow: hidden; }
+
+  .panel-sidebar { width: 224px; background: #fff; border-right: 1px solid rgba(0,0,0,0.07); display: flex; flex-direction: column; overflow: hidden; flex-shrink: 0; }
+  .panel-sidebar h2 { font-size: 10px; font-weight: 700; color: #94a3b8; text-transform: uppercase; letter-spacing: 1px; padding: 11px 14px 8px; border-bottom: 1px solid rgba(0,0,0,0.06); flex-shrink: 0; }
+  .panel-list { overflow-y: auto; flex: 1; padding: 6px; }
+  .panel-group { margin-bottom: 12px; }
+  .panel-group-label { font-size: 9px; font-weight: 700; color: #cbd5e1; text-transform: uppercase; letter-spacing: 1px; padding: 6px 8px 4px; }
+  .panel-item { padding: 6px 8px; border-radius: 6px; cursor: pointer; border: 1px solid transparent; margin-bottom: 2px; transition: all 0.12s; display: flex; align-items: center; gap: 8px; }
+  .panel-item:hover { background: #f0f2f8; border-color: rgba(0,0,0,0.06); }
+  .panel-item.selected { background: #ede9fe; border-color: rgba(99,102,241,0.25); }
+  .panel-dot { width: 8px; height: 8px; border-radius: 2px; flex-shrink: 0; }
+  .panel-name { font-size: 11px; font-weight: 600; color: #334155; }
+  .panel-sub { font-size: 10px; color: #94a3b8; }
+
+  .main { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+  .floor-area { flex: 1; overflow: auto; padding: 14px; }
+  .floor-plan { display: flex; flex-direction: column; gap: 3px; min-width: 600px; }
+  .zone-label { font-size: 9px; font-weight: 700; color: #cbd5e1; text-transform: uppercase; letter-spacing: 1.5px; padding: 8px 0 3px; }
+
+  .row-wrapper { display: flex; align-items: center; gap: 6px; }
+  .row-num { width: 20px; font-size: 9px; color: #cbd5e1; text-align: right; flex-shrink: 0; }
+  .row-panel-tags { display: flex; flex-direction: column; gap: 2px; width: 78px; flex-shrink: 0; }
+  .row-tag { font-size: 9px; font-weight: 700; padding: 2px 5px; border-radius: 4px; text-align: center; cursor: pointer; opacity: 0.85; transition: all 0.12s; }
+  .row-tag:hover { opacity: 1; }
+  .row-tag.selected { opacity: 1; box-shadow: 0 0 0 2px rgba(0,0,0,0.2); }
+
+  .cab-row { display: flex; gap: 2px; }
+  .cab { width: 56px; height: 44px; border-radius: 5px; cursor: pointer; display: flex; flex-direction: column; align-items: center; justify-content: center; border: 1px solid rgba(0,0,0,0.08); transition: all 0.12s; position: relative; overflow: hidden; }
+  .cab:hover { border-color: rgba(0,0,0,0.2); transform: translateY(-1px); box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
+  .cab.selected { border-color: #6366f1 !important; border-width: 1.5px; z-index: 2; box-shadow: 0 0 0 2px rgba(99,102,241,0.2); }
+  .cab.dimmed { opacity: 0.2; }
+  .cab.highlighted { opacity: 1; }
+  .cab-num { font-size: 9px; color: rgba(255,255,255,0.75); line-height: 1; }
+  .cab-type { font-size: 8px; color: rgba(255,255,255,0.55); line-height: 1; margin-top: 1px; text-align: center; padding: 0 2px; }
+  .cab-strips { position: absolute; bottom: 0; left: 0; right: 0; height: 4px; display: flex; }
+  .cab-strip { flex: 1; }
+  .cab.compute { background: #3a8f68; }
+  .cab.network { background: #3a6ea8; }
+  .cab.empty { background: #c8d0dc; opacity: 0.5; cursor: default; }
+
+  .detail-panel { width: 300px; background: #fff; border-left: 1px solid rgba(0,0,0,0.07); padding: 14px; overflow-y: auto; flex-shrink: 0; }
+  .detail-panel h3 { font-size: 13px; font-weight: 700; margin-bottom: 10px; color: #1e2a3a; }
+  .detail-panel .empty-state { color: #cbd5e1; font-size: 12px; text-align: center; margin-top: 50px; line-height: 2.2; }
+  .detail-section { margin-bottom: 16px; }
+  .detail-section h4 { font-size: 9px; font-weight: 700; color: #cbd5e1; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 8px; border-bottom: 1px solid rgba(0,0,0,0.06); padding-bottom: 5px; }
+  .detail-row { display: flex; justify-content: space-between; align-items: center; padding: 4px 0; font-size: 12px; border-bottom: 1px solid rgba(0,0,0,0.04); }
+  .detail-row:last-child { border-bottom: none; }
+  .detail-label { color: #94a3b8; }
+  .detail-value { font-weight: 600; color: #334155; }
+  .feed-badge { display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; border-radius: 6px; font-size: 11px; font-weight: 700; margin: 2px 0; cursor: pointer; transition: opacity 0.12s; }
+  .feed-badge:hover { opacity: 0.8; }
+  .feed-dot { width: 7px; height: 7px; border-radius: 2px; }
+  .impact-card { background: #f8fafc; border: 1px solid rgba(0,0,0,0.07); border-radius: 8px; padding: 10px 12px; margin-bottom: 6px; font-size: 11px; }
+  .impact-card .ic-title { font-weight: 700; font-size: 12px; margin-bottom: 4px; }
+  .impact-card .ic-sub { color: #94a3b8; font-size: 10px; }
+  .note-box { background: #f8fafc; border: 1px solid rgba(0,0,0,0.07); border-radius: 8px; padding: 10px; font-size: 11px; color: #64748b; margin-top: 8px; line-height: 1.65; }
+  .clear-btn { background: #fef2f2; color: #dc2626; border: 1px solid #fecaca; border-radius: 6px; padding: 5px 12px; font-size: 11px; font-weight: 600; cursor: pointer; transition: all 0.12s; }
+  .clear-btn:hover { background: #fee2e2; }
+
+  .search-bar { padding: 8px 10px; border-bottom: 1px solid rgba(0,0,0,0.06); flex-shrink: 0; }
+  .search-bar input { width: 100%; background: #f0f2f8; border: 1px solid rgba(0,0,0,0.09); border-radius: 6px; color: #1e2a3a; padding: 6px 10px; font-size: 12px; outline: none; transition: all 0.12s; }
+  .search-bar input::placeholder { color: #b0bec5; }
+  .search-bar input:focus { border-color: rgba(99,102,241,0.45); background: #fff; box-shadow: 0 0 0 3px rgba(99,102,241,0.08); }
+  .search-results { margin-top: 4px; max-height: 120px; overflow-y: auto; }
+  .search-result-item { padding: 5px 8px; border-radius: 5px; cursor: pointer; font-size: 11px; transition: background 0.1s; }
+  .search-result-item:hover { background: #f0f2f8; }
+
+  ::-webkit-scrollbar { width: 5px; height: 5px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.1); border-radius: 3px; }
+  .aisle-label { text-align: center; font-size: 9px; font-weight: 700; color: #dde3f0; text-transform: uppercase; letter-spacing: 2px; padding: 4px 0; }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div>
+    <div class="header h1" style="font-size:16px;font-weight:700;color:#e94560;letter-spacing:0.5px;">DH2 (Phoenix)</div>
+    <div class="subtitle">Power Distribution Diagram &nbsp;|&nbsp; IRC Panels C &amp; D &nbsp;|&nbsp; 136kW GPU Compute (HD-GB3d)</div>
+  </div>
+  <div class="legend">
+    <div class="legend-item clickable" id="leg-feedC" data-feed="C" onclick="selectFeed('C')" title="Click to highlight all Feed C cabinets"><div class="legend-dot" style="background:#FF9800;"></div>Feed C (1C)</div>
+    <div class="legend-item clickable" id="leg-feedD" data-feed="D" onclick="selectFeed('D')" title="Click to highlight all Feed D cabinets"><div class="legend-dot" style="background:#2196F3;"></div>Feed D (2D)</div>
+    <div class="legend-item"><div class="legend-dot" style="background:#4CAF50;"></div>Grid-A Compute</div>
+    <div class="legend-item"><div class="legend-dot" style="background:#607D8B;"></div>Network / Infra</div>
+    <div class="legend-item"><div class="legend-dot" style="background:#37474F;"></div>Empty / Reserved</div>
+  </div>
+</div>
+
+<div class="layout">
+
+  <!-- Left panel sidebar -->
+  <div class="panel-sidebar">
+    <h2>IRC Panels</h2>
+    <div class="search-bar">
+      <input type="text" id="searchInput" placeholder="Search cabinet #, type..." oninput="doSearch(this.value)">
+      <div class="search-results" id="searchResults"></div>
+    </div>
+    <div class="panel-list">
+      <div class="panel-group">
+        <div class="panel-group-label">Feed C (1C) — Orange</div>
+        <div id="feedC-list"></div>
+      </div>
+      <div class="panel-group">
+        <div class="panel-group-label">Feed D (2D) — Blue</div>
+        <div id="feedD-list"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Floor plan -->
+  <div class="main">
+    <div class="floor-area">
+      <div class="floor-plan" id="floorPlan"></div>
+    </div>
+  </div>
+
+  <!-- Detail panel -->
+  <div class="detail-panel" id="detailPanel">
+    <div class="empty-state">
+      <div style="font-size:28px;margin-bottom:10px;">⚡</div>
+      <div>Click a panel or cabinet<br>to see details</div>
+      <div style="margin-top:16px;font-size:10px;color:#37474f;">Data Hall 2 (DH2)<br>Volo II / Chirisa</div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+// ── Data ───────────────────────────────────────────────────────────────────
+
+const ROWS = [{"row": 1, "cabs_lr": ["T1-FE-v3a", "HD-GB3d", "HD-GB3d", "HD-GB3d", "HD-GB3d", "HD-GB3d", "HD-GB3d", "HD-GB3d", "HD-GB3d", "XDR x6a"], "panel": "01", "zone": "compute", "type": "RW-25", "cabinets": [{"pos": 0, "cab": 1, "type": "T1-FE-v3a", "cat": "network"}, {"pos": 1, "cab": 2, "type": "HD-GB3d", "cat": "compute"}, {"pos": 2, "cab": 3, "type": "HD-GB3d", "cat": "compute"}, {"pos": 3, "cab": 4, "type": "HD-GB3d", "cat": "compute"}, {"pos": 4, "cab": 5, "type": "HD-GB3d", "cat": "compute"}, {"pos": 5, "cab": 6, "type": "HD-GB3d", "cat": "compute"}, {"pos": 6, "cab": 7, "type": "HD-GB3d", "cat": "compute"}, {"pos": 7, "cab": 8, "type": "HD-GB3d", "cat": "compute"}, {"pos": 8, "cab": 9, "type": "HD-GB3d", "cat": "compute"}, {"pos": 9, "cab": 10, "type": "XDR x6a", "cat": "network"}]}, {"row": 2, "cabs_lr": ["XDR x6a", "HD-GB3d", "HD-GB3d", "HD-GB3d", "HD-GB3d", "HD-GB3d", "HD-GB3d", "HD-GB3d", "HD-GB3d", "T0-FE-v1a"], "panel": "02", "zone": "compute", "type": "RW-25", "cabinets": [{"pos": 0, "cab": 20, "type": "XDR x6a", "cat": "network"}, {"pos": 1, "cab": 19, "type": "HD-GB3d", "cat": "compute"}, {"pos": 2, "cab": 18, "type": "HD-GB3d", "cat": "compute"}, {"pos": 3, "cab": 17, "type": "HD-GB3d", "cat": "compute"}, {"pos": 4, "cab": 16, "type": "HD-GB3d", "cat": "compute"}, {"pos": 5, "cab": 15, "type": "HD-GB3d", "cat": "compute"}, {"pos": 6, "cab": 14, "type": "HD-GB3d", "cat": "compute"}, {"pos": 7, "cab": 13, "type": "HD-GB3d", "cat": "compute"}, {"pos": 8, "cab": 12, "type": "HD-GB3d", "cat": "compute"}, {"pos": 9, "cab": 11, "type": "T0-FE-v1a", "cat": "network"}]}, {"row": 3, "cabs_lr": ["T0-FE-v1a", "HD-GB3d", "HD-GB3d", "HD-GB3d", "HD-GB3d", "HD-GB3d", "HD-GB3d", "HD-GB3d", "HD-GB3d", "XDR x6a"], "panel": "03", "zone": "compute", "type": "RW-25", "cabinets": [{"pos": 0, "cab": 21, "type": "T0-FE-v1a", "cat": "network"}, {"pos": 1, "cab": 22, "type": "HD-GB3d", "cat": "compute"}, {"pos": 2, "cab": 23, "type": "HD-GB3d", "cat": "compute"}, {"pos": 3, "cab": 24, "type": "HD-GB3d", "cat": "compute"}, {"pos": 4, "cab": 25, "type": "HD-GB3d", "cat": "compute"}, {"pos": 5, "cab": 26, "type": "HD-GB3d", "cat": "compute"}, {"pos": 6, "cab": 27, "type": "HD-GB3d", "cat": "compute"}, {"pos": 7, "cab": 28, "type": "HD-GB3d", "cat": "compute"}, {"pos": 8, "cab": 29, "type": "HD-GB3d", "cat": "compute"}, {"pos": 9, "cab": 30, "type": "XDR x6a", "cat": "network"}]}, {"row": 4, "cabs_lr": ["XDR x6a", "HD-GB3d", "HD-GB3d", "HD-GB3d", "HD-GB3d", "HD-GB3d", "HD-GB3d", "HD-GB3d", "HD-GB3d", "T0-FE-v1a"], "panel": "04", "zone": "compute", "type": "RW-25", "cabinets": [{"pos": 0, "cab": 40, "type": "XDR x6a", "cat": "network"}, {"pos": 1, "cab": 39, "type": "HD-GB3d", "cat": "compute"}, {"pos": 2, "cab": 38, "type": "HD-GB3d", "cat": "compute"}, {"pos": 3, "cab": 37, "type": "HD-GB3d", "cat": "compute"}, {"pos": 4, "cab": 36, "type": "HD-GB3d", "cat": "compute"}, {"pos": 5, "cab": 35, "type": "HD-GB3d", "cat": "compute"}, {"pos": 6, "cab": 34, "type": "HD-GB3d", "cat": "compute"}, {"pos": 7, "cab": 33, "type": "HD-GB3d", "cat": "compute"}, {"pos": 8, "cab": 32, "type": "HD-GB3d", "cat": "compute"}, {"pos": 9, "cab": 31, "type": "T0-FE-v1a", "cat": "network"}]}, {"row": 5, "cabs_lr": ["T0-FE-v1a", "HD-GB3d", "HD-GB3d", "HD-GB3d", "HD-GB3d", "HD-GB3d", "HD-GB3d", "HD-GB3d", "HD-GB3d", "XDR x6a"], "panel": "05", "zone": "compute", "type": "RW-25", "cabinets": [{"pos": 0, "cab": 41, "type": "T0-FE-v1a", "cat": "network"}, {"pos": 1, "cab": 42, "type": "HD-GB3d", "cat": "compute"}, {"pos": 2, "cab": 43, "type": "HD-GB3d", "cat": "compute"}, {"pos": 3, "cab": 44, "type": "HD-GB3d", "cat": "compute"}, {"pos": 4, "cab": 45, "type": "HD-GB3d", "cat": "compute"}, {"pos": 5, "cab": 46, "type": "HD-GB3d", "cat": "compute"}, {"pos": 6, "cab": 47, "type": "HD-GB3d", "cat": "compute"}, {"pos": 7, "cab": 48, "type": "HD-GB3d", "cat": "compute"}, {"pos": 8, "cab": 49, "type": "HD-GB3d", "cat": "compute"}, {"pos": 9, "cab": 50, "type": "XDR x6a", "cat": "network"}]}, {"row": 6, "cabs_lr": ["XDR x6a", "HD-GB3d", "HD-GB3d", "HD-GB3d", "HD-GB3d", "HD-GB3d", "HD-GB3d", "HD-GB3d", "HD-GB3d", "T0-FE-v1a"], "panel": "06", "zone": "compute", "type": "RW-25", "cabinets": [{"pos": 0, "cab": 60, "type": "XDR x6a", "cat": "network"}, {"pos": 1, "cab": 59, "type": "HD-GB3d", "cat": "compute"}, {"pos": 2, "cab": 58, "type": "HD-GB3d", "cat": "compute"}, {"pos": 3, "cab": 57, "type": "HD-GB3d", "cat": "compute"}, {"pos": 4, "cab": 56, "type": "HD-GB3d", "cat": "compute"}, {"pos": 5, "cab": 55, "type": "HD-GB3d", "cat": "compute"}, {"pos": 6, "cab": 54, "type": "HD-GB3d", "cat": "compute"}, {"pos": 7, "cab": 53, "type": "HD-GB3d", "cat": "compute"}, {"pos": 8, "cab": 52, "type": "HD-GB3d", "cat": "compute"}, {"pos": 9, "cab": 51, "type": "T0-FE-v1a", "cat": "network"}]}, {"row": 7, "cabs_lr": ["T1-FE-v5a", "CP5-v2a", "CP5-v2a", "CP5-v2a", "CP5-v2a", "CP5-v2a", "RES", "RES", "RES", "T2-FE-v1a"], "panel": "07", "zone": "grid-a", "type": "RK-26", "cabinets": [{"pos": 0, "cab": 61, "type": "T1-FE-v5a", "cat": "network"}, {"pos": 1, "cab": 62, "type": "CP5-v2a", "cat": "compute"}, {"pos": 2, "cab": 63, "type": "CP5-v2a", "cat": "compute"}, {"pos": 3, "cab": 64, "type": "CP5-v2a", "cat": "compute"}, {"pos": 4, "cab": 65, "type": "CP5-v2a", "cat": "compute"}, {"pos": 5, "cab": 66, "type": "CP5-v2a", "cat": "compute"}, {"pos": 6, "cab": 67, "type": "RES", "cat": "empty"}, {"pos": 7, "cab": 68, "type": "RES", "cat": "empty"}, {"pos": 8, "cab": 69, "type": "RES", "cat": "empty"}, {"pos": 9, "cab": 70, "type": "T2-FE-v1a", "cat": "network"}]}, {"row": 8, "cabs_lr": ["RES", "RES", "RES", "RES", "RES", "RES", "RES", "RES", "RES", "RES"], "panel": "08", "zone": "grid-a", "type": "RK-26", "cabinets": [{"pos": 0, "cab": 80, "type": "RES", "cat": "empty"}, {"pos": 1, "cab": 79, "type": "RES", "cat": "empty"}, {"pos": 2, "cab": 78, "type": "RES", "cat": "empty"}, {"pos": 3, "cab": 77, "type": "RES", "cat": "empty"}, {"pos": 4, "cab": 76, "type": "RES", "cat": "empty"}, {"pos": 5, "cab": 75, "type": "RES", "cat": "empty"}, {"pos": 6, "cab": 74, "type": "RES", "cat": "empty"}, {"pos": 7, "cab": 73, "type": "RES", "cat": "empty"}, {"pos": 8, "cab": 72, "type": "RES", "cat": "empty"}, {"pos": 9, "cab": 71, "type": "RES", "cat": "empty"}]}, {"row": 9, "cabs_lr": ["DPR-E1", "DPR-E2", "FCR-v3a1", "FCR-v3b", "RES"], "panel": null, "zone": "infra", "type": "RK-26", "cabinets": [{"pos": 0, "cab": 81, "type": "DPR-E1", "cat": "network"}, {"pos": 1, "cab": 82, "type": "DPR-E2", "cat": "network"}, {"pos": 2, "cab": 83, "type": "FCR-v3a1", "cat": "network"}, {"pos": 3, "cab": 84, "type": "FCR-v3b", "cat": "network"}, {"pos": 4, "cab": 85, "type": "RES", "cat": "empty"}]}, {"row": 10, "cabs_lr": ["PSCR", "PSCR", "RES", "RES", "RES"], "panel": null, "zone": "infra", "type": "RK-26", "cabinets": [{"pos": 0, "cab": 100, "type": "PSCR", "cat": "network"}, {"pos": 1, "cab": 99, "type": "PSCR", "cat": "network"}, {"pos": 2, "cab": 98, "type": "RES", "cat": "empty"}, {"pos": 3, "cab": 97, "type": "RES", "cat": "empty"}, {"pos": 4, "cab": 96, "type": "RES", "cat": "empty"}]}, {"row": 11, "cabs_lr": ["XDR x4a", "T2-FE-v2a", "T2-FE-v2b", "U", "U"], "panel": null, "zone": "infra", "type": "RK-26", "cabinets": [{"pos": 0, "cab": 101, "type": "XDR x4a", "cat": "network"}, {"pos": 1, "cab": 102, "type": "T2-FE-v2a", "cat": "network"}, {"pos": 2, "cab": 103, "type": "T2-FE-v2b", "cat": "network"}, {"pos": 3, "cab": 104, "type": "U", "cat": "empty"}, {"pos": 4, "cab": 105, "type": "U", "cat": "empty"}]}, {"row": 12, "cabs_lr": ["XDR x4a", "T2-FE-v2d", "T2-FE-v2c", "U", "U"], "panel": null, "zone": "infra", "type": "RK-26", "cabinets": [{"pos": 0, "cab": 120, "type": "XDR x4a", "cat": "network"}, {"pos": 1, "cab": 119, "type": "T2-FE-v2d", "cat": "network"}, {"pos": 2, "cab": 118, "type": "T2-FE-v2c", "cat": "network"}, {"pos": 3, "cab": 117, "type": "U", "cat": "empty"}, {"pos": 4, "cab": 116, "type": "U", "cat": "empty"}]}, {"row": 13, "cabs_lr": ["XDR x4b", "XDR x4a", "XDR x4a", "XDR x4a", "XDR x4a"], "panel": null, "zone": "infra", "type": "", "cabinets": [{"pos": 0, "cab": 121, "type": "XDR x4b", "cat": "network"}, {"pos": 1, "cab": 122, "type": "XDR x4a", "cat": "network"}, {"pos": 2, "cab": 123, "type": "XDR x4a", "cat": "network"}, {"pos": 3, "cab": 124, "type": "XDR x4a", "cat": "network"}, {"pos": 4, "cab": 125, "type": "XDR x4a", "cat": "network"}]}, {"row": 14, "cabs_lr": ["XDR x4a", "XDR x4a", "XDR x4a", "XDR x4a", "XDR x4a"], "panel": null, "zone": "infra", "type": "", "cabinets": [{"pos": 0, "cab": 140, "type": "XDR x4a", "cat": "network"}, {"pos": 1, "cab": 139, "type": "XDR x4a", "cat": "network"}, {"pos": 2, "cab": 138, "type": "XDR x4a", "cat": "network"}, {"pos": 3, "cab": 137, "type": "XDR x4a", "cat": "network"}, {"pos": 4, "cab": 136, "type": "XDR x4a", "cat": "network"}]}, {"row": 15, "cabs_lr": ["T3-E-v3a", "T3-E-v3b", "T3-E-v3c", "T3-E-v3d", "T3-E-v3e"], "panel": null, "zone": "infra", "type": "", "cabinets": [{"pos": 0, "cab": 141, "type": "T3-E-v3a", "cat": "network"}, {"pos": 1, "cab": 142, "type": "T3-E-v3b", "cat": "network"}, {"pos": 2, "cab": 143, "type": "T3-E-v3c", "cat": "network"}, {"pos": 3, "cab": 144, "type": "T3-E-v3d", "cat": "network"}, {"pos": 4, "cab": 145, "type": "T3-E-v3e", "cat": "network"}]}, {"row": 16, "cabs_lr": ["RES", "RES", "RES", "RES", "T3-E-v3f"], "panel": null, "zone": "infra", "type": "", "cabinets": [{"pos": 0, "cab": 160, "type": "RES", "cat": "empty"}, {"pos": 1, "cab": 159, "type": "RES", "cat": "empty"}, {"pos": 2, "cab": 158, "type": "RES", "cat": "empty"}, {"pos": 3, "cab": 157, "type": "RES", "cat": "empty"}, {"pos": 4, "cab": 156, "type": "T3-E-v3f", "cat": "network"}]}];
+
+// Panel definitions
+// Each row with panel N → PNL-IRC-1C-NN (Feed C, orange) + PNL-IRC-2D-NN (Feed D, blue)
+const FEED_C_COLOR = '#FF9800';
+const FEED_D_COLOR = '#2196F3';
+
+// Build panel-to-row lookup
+const panelRows = {}; // panelId → row object
+ROWS.forEach(r => {
+  if (r.panel) {
+    panelRows['1C-' + r.panel] = r;
+    panelRows['2D-' + r.panel] = r;
+  }
+});
+
+// Cabinet type descriptions
+const CAB_DESCRIPTIONS = {
+  'HD-GB3d': '136kW GPU Compute Cabinet',
+  'CP5-v2a': 'Compute Cabinet (CP5)',
+  'T1-FE-v3a': 'Top-of-Row Switch (T1)',
+  'T1-FE-v5a': 'Top-of-Row Switch (T1)',
+  'T0-FE-v1a': 'Top-of-Row Switch (T0)',
+  'T2-FE-v1a': 'Top-of-Row Switch (T2)',
+  'T2-FE-v2a': 'Aggregation Switch (T2)',
+  'T2-FE-v2b': 'Aggregation Switch (T2)',
+  'T2-FE-v2c': 'Aggregation Switch (T2)',
+  'T2-FE-v2d': 'Aggregation Switch (T2)',
+  'XDR x6a': 'InfiniBand Switch (XDR x6)',
+  'XDR x4a': 'InfiniBand Switch (XDR x4)',
+  'XDR x4b': 'InfiniBand Switch (XDR x4)',
+  'FCR-v3a1': 'Fabric Core Router (FCR)',
+  'FCR-v3b': 'Fabric Core Router (FCR)',
+  'DPR-E1': 'Data Path Router (DPR)',
+  'DPR-E2': 'Data Path Router (DPR)',
+  'PSCR': 'Platform Services Core Router (PSCR)',
+  'T3-E-v3a': 'Core Switch (T3)',
+  'T3-E-v3b': 'Core Switch (T3)',
+  'T3-E-v3c': 'Core Switch (T3)',
+  'T3-E-v3d': 'Core Switch (T3)',
+  'T3-E-v3e': 'Core Switch (T3)',
+  'T3-E-v3f': 'Core Switch (T3)',
+  'RES': 'Reserved / Empty',
+  'U': 'Unspecified'
+};
+
+// ── State ──────────────────────────────────────────────────────────────────
+let selectedPanel = null;  // '1C-01', '2D-03', etc.
+let selectedCab = null;    // {row, cab} object
+let selectedFeed = null;   // 'C' or 'D'
+
+// ── Build sidebar panels ───────────────────────────────────────────────────
+function buildPanelSidebar() {
+  const cList = document.getElementById('feedC-list');
+  const dList = document.getElementById('feedD-list');
+
+  for (let i = 1; i <= 8; i++) {
+    const nn = String(i).padStart(2, '0');
+    const row = ROWS[i - 1];
+    const hasCabs = row && row.cabinets.filter(c => c.cat === 'compute').length;
+
+    // Feed C
+    const cItem = document.createElement('div');
+    cItem.className = 'panel-item';
+    cItem.id = 'panel-1C-' + nn;
+    cItem.innerHTML = `
+      <div class="panel-dot" style="background:${FEED_C_COLOR}"></div>
+      <div>
+        <div class="panel-name">PNL-IRC-1C-${nn}</div>
+        <div class="panel-sub">Row ${i} &nbsp;•&nbsp; Feed C</div>
+      </div>
+    `;
+    cItem.onclick = () => selectPanel('1C-' + nn);
+    cList.appendChild(cItem);
+
+    // Feed D
+    const dItem = document.createElement('div');
+    dItem.className = 'panel-item';
+    dItem.id = 'panel-2D-' + nn;
+    dItem.innerHTML = `
+      <div class="panel-dot" style="background:${FEED_D_COLOR}"></div>
+      <div>
+        <div class="panel-name">PNL-IRC-2D-${nn}</div>
+        <div class="panel-sub">Row ${i} &nbsp;•&nbsp; Feed D</div>
+      </div>
+    `;
+    dItem.onclick = () => selectPanel('2D-' + nn);
+    dList.appendChild(dItem);
+  }
+}
+
+// ── Build floor plan ───────────────────────────────────────────────────────
+function buildFloorPlan() {
+  const fp = document.getElementById('floorPlan');
+  fp.innerHTML = '';
+
+  let lastZone = null;
+  ROWS.forEach(row => {
+    if (row.zone !== lastZone) {
+      const zl = document.createElement('div');
+      zl.className = 'zone-label';
+      zl.textContent = {
+        'compute': '▸ GPU Compute Rows (HD-GB3d — 136kW)',
+        'grid-a':  '▸ Grid-A / Management Rows',
+        'infra':   '▸ Infrastructure / Network Rows'
+      }[row.zone] || row.zone;
+      fp.appendChild(zl);
+      lastZone = row.zone;
+    }
+
+    const wrapper = document.createElement('div');
+    wrapper.className = 'row-wrapper';
+
+    // Row number
+    const rn = document.createElement('div');
+    rn.className = 'row-num';
+    rn.textContent = row.row;
+    wrapper.appendChild(rn);
+
+    // Panel tags
+    const tags = document.createElement('div');
+    tags.className = 'row-panel-tags';
+    if (row.panel) {
+      const nn = row.panel;
+      const tC = document.createElement('div');
+      tC.className = 'row-tag';
+      tC.style.background = FEED_C_COLOR;
+      tC.style.color = '#1a1a2e';
+      tC.textContent = '1C-' + nn;
+      tC.id = 'rowtag-1C-' + nn;
+      tC.onclick = () => selectPanel('1C-' + nn);
+      const tD = document.createElement('div');
+      tD.className = 'row-tag';
+      tD.style.background = FEED_D_COLOR;
+      tD.style.color = 'white';
+      tD.textContent = '2D-' + nn;
+      tD.id = 'rowtag-2D-' + nn;
+      tD.onclick = () => selectPanel('2D-' + nn);
+      tags.appendChild(tC);
+      tags.appendChild(tD);
+    } else {
+      const nop = document.createElement('div');
+      nop.style.cssText = 'font-size:9px;color:#37474f;padding:2px 4px;';
+      nop.textContent = 'No IRC panel';
+      tags.appendChild(nop);
+    }
+    wrapper.appendChild(tags);
+
+    // Cabinets
+    const cabRow = document.createElement('div');
+    cabRow.className = 'cab-row';
+
+    row.cabinets.forEach(c => {
+      const el = document.createElement('div');
+      el.className = 'cab ' + c.cat;
+      el.id = 'cab-' + row.row + '-' + c.cab;
+      el.dataset.row = row.row;
+      el.dataset.cab = c.cab;
+      el.dataset.type = c.type;
+      el.dataset.cat = c.cat;
+      el.dataset.panel = row.panel || '';
+
+      if (c.cat !== 'empty') {
+        el.onclick = () => selectCabinet(row, c);
+      }
+
+      // Cabinet body color (handled by CSS classes: .cab.compute, .cab.network, .cab.empty)
+      // Grid-A compute gets a slightly different shade for visual distinction
+      if (c.cat === 'compute' && row.zone === 'grid-a') {
+        el.style.background = '#2e7d56';
+      }
+
+      // Label
+      const numEl = document.createElement('div');
+      numEl.className = 'cab-num';
+      numEl.textContent = c.cab;
+      el.appendChild(numEl);
+
+      const typeEl = document.createElement('div');
+      typeEl.className = 'cab-type';
+      typeEl.textContent = c.type.length > 8 ? c.type.substring(0, 8) : c.type;
+      el.appendChild(typeEl);
+
+      // Feed strips at bottom (for compute/network cabs with panels)
+      if (row.panel && c.cat !== 'empty') {
+        const strips = document.createElement('div');
+        strips.className = 'cab-strips';
+        const sC = document.createElement('div');
+        sC.className = 'cab-strip';
+        sC.style.background = FEED_C_COLOR;
+        const sD = document.createElement('div');
+        sD.className = 'cab-strip';
+        sD.style.background = FEED_D_COLOR;
+        strips.appendChild(sC);
+        strips.appendChild(sD);
+        el.appendChild(strips);
+      }
+
+      cabRow.appendChild(el);
+    });
+
+    wrapper.appendChild(cabRow);
+    fp.appendChild(wrapper);
+  });
+}
+
+// ── Selection logic ────────────────────────────────────────────────────────
+function selectFeed(feed) {
+  if (selectedFeed === feed) { clearSelection(); return; }
+  selectedFeed = feed; selectedPanel = null; selectedCab = null;
+  clearAllHighlights();
+
+  const color = feed === 'C' ? FEED_C_COLOR : FEED_D_COLOR;
+  const panelPrefix = feed === 'C' ? '1C-' : '2D-';
+  const otherPrefix = feed === 'C' ? '2D-' : '1C-';
+  const otherColor = feed === 'C' ? FEED_D_COLOR : FEED_C_COLOR;
+  const feedLabel = feed === 'C' ? 'Feed C (1C)' : 'Feed D (2D)';
+  const otherLabel = feed === 'C' ? 'Feed D (2D)' : 'Feed C (1C)';
+
+  // Mark legend item active
+  document.querySelectorAll('.legend-item.clickable').forEach(el => {
+    el.classList.toggle('feed-active', el.dataset.feed === feed);
+  });
+
+  // Highlight all non-empty cabs in rows with panels; dim others
+  const affectedRows = new Set();
+  document.querySelectorAll('.cab').forEach(el => {
+    if (el.dataset.panel && el.dataset.cat !== 'empty') {
+      el.classList.add('highlighted');
+      affectedRows.add(parseInt(el.dataset.row));
+    } else {
+      el.classList.add('dimmed');
+    }
+  });
+
+  // Highlight the panel sidebar items for this feed
+  document.querySelectorAll('.panel-item').forEach(el => {
+    el.classList.toggle('selected', el.id && el.id.startsWith('panel-' + panelPrefix));
+  });
+
+  // Count stats
+  const panelCount = affectedRows.size;
+  const cabCount = document.querySelectorAll('.cab.highlighted').length;
+  const rowList = [...affectedRows].sort((a,b)=>a-b);
+
+  document.getElementById('detailPanel').innerHTML = `
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+      <h3 style="margin:0;color:${color};">${feedLabel}</h3>
+      <button class="clear-btn" onclick="clearSelection()">✕ Clear</button>
+    </div>
+
+    <div class="detail-section">
+      <h4>Feed Summary</h4>
+      <div class="detail-row">
+        <span class="detail-label">Feed</span>
+        <span class="feed-badge" style="background:${color}22;color:${color};border:1px solid ${color}44;">
+          <div class="feed-dot" style="background:${color};"></div>
+          ${feedLabel}
+        </span>
+      </div>
+      <div class="detail-row">
+        <span class="detail-label">Panels on this feed</span>
+        <span class="detail-value">${panelCount} panels (rows 1–${rowList[rowList.length-1]})</span>
+      </div>
+      <div class="detail-row">
+        <span class="detail-label">Cabinets powered</span>
+        <span class="detail-value">${cabCount} cabinets</span>
+      </div>
+      <div class="detail-row">
+        <span class="detail-label">Redundant feed</span>
+        <span class="feed-badge" style="background:${otherColor}22;color:${otherColor};border:1px solid ${otherColor}44;cursor:pointer;" onclick="selectFeed('${feed === 'C' ? 'D' : 'C'}')">
+          <div class="feed-dot" style="background:${otherColor};"></div>
+          ${otherLabel} ↗
+        </span>
+      </div>
+    </div>
+
+    <div class="detail-section">
+      <h4>Panels (PNL-IRC-${panelPrefix.replace('-','')})</h4>
+      <div style="display:flex;flex-direction:column;gap:3px;">
+        ${rowList.map(r => {
+          const nn = String(r).padStart(2,'0');
+          const pid = panelPrefix + nn;
+          return `<div class="feed-badge" style="background:${color}22;color:${color};border:1px solid ${color}44;cursor:pointer;" onclick="selectPanel('${pid}')">`
+            + `<div class="feed-dot" style="background:${color};"></div>`
+            + `PNL-IRC-${pid} &nbsp;(Row ${r}) ↗</div>`;
+        }).join('')}
+      </div>
+    </div>
+
+    <div class="detail-section">
+      <h4>Impact if this feed fails</h4>
+      <div class="impact-card">
+        <div class="ic-title" style="color:#ef5350;">⚠ ${cabCount} cabinets lose one power feed</div>
+        <div class="ic-sub">Compute cabinets are dual-fed — losing ${feedLabel} reduces redundancy but does not cause an immediate outage if ${otherLabel} is healthy.</div>
+      </div>
+    </div>
+  `;
+}
+
+function clearAllHighlights() {
+  document.querySelectorAll('.cab').forEach(el => {
+    el.classList.remove('selected', 'dimmed', 'highlighted');
+  });
+  document.querySelectorAll('.panel-item').forEach(el => el.classList.remove('selected'));
+  document.querySelectorAll('.row-tag').forEach(el => el.classList.remove('selected'));
+  document.querySelectorAll('.legend-item.clickable').forEach(el => el.classList.remove('feed-active'));
+}
+
+function selectPanel(panelId) {
+  if (selectedPanel === panelId) {
+    clearSelection();
+    return;
+  }
+  selectedPanel = panelId;
+  selectedCab = null;
+  clearAllHighlights();
+
+  // Find which row this panel serves
+  const nn = panelId.split('-')[1];
+  const rowNum = parseInt(nn, 10);
+  const row = ROWS[rowNum - 1];
+
+  // Highlight panel items
+  document.querySelectorAll('.panel-item').forEach(el => {
+    if (el.id === 'panel-' + panelId) el.classList.add('selected');
+  });
+  document.querySelectorAll('.row-tag').forEach(el => {
+    if (el.id === 'rowtag-' + panelId) el.classList.add('selected');
+  });
+
+  // Dim all cabs not in this row, highlight cabs in this row
+  document.querySelectorAll('.cab').forEach(el => {
+    if (parseInt(el.dataset.row) === rowNum) {
+      el.classList.add('highlighted');
+    } else {
+      el.classList.add('dimmed');
+    }
+  });
+
+  // Show detail
+  showPanelDetail(panelId, row);
+}
+
+function selectCabinet(row, cab) {
+  selectedCab = {row, cab};
+  selectedPanel = null;
+  clearAllHighlights();
+
+  const el = document.getElementById('cab-' + row.row + '-' + cab.cab);
+  if (el) el.classList.add('selected');
+
+  // Dim everything else
+  document.querySelectorAll('.cab').forEach(c => {
+    if (c.id !== 'cab-' + row.row + '-' + cab.cab) c.classList.add('dimmed');
+  });
+
+  showCabinetDetail(row, cab);
+}
+
+function clearSelection() {
+  selectedPanel = null;
+  selectedCab = null;
+  selectedFeed = null;
+  clearAllHighlights();
+  document.getElementById('detailPanel').innerHTML = `
+    <div class="empty-state">
+      <div style="font-size:28px;margin-bottom:10px;">⚡</div>
+      <div>Click a panel or cabinet<br>to see details</div>
+      <div style="margin-top:16px;font-size:10px;color:#37474f;">Data Hall 2 (DH2)<br>Volo II / Chirisa</div>
+    </div>
+  `;
+}
+
+// ── Detail views ───────────────────────────────────────────────────────────
+function showPanelDetail(panelId, row) {
+  const feed = panelId.startsWith('1C') ? 'C' : 'D';
+  const nn = panelId.split('-')[1];
+  const color = feed === 'C' ? FEED_C_COLOR : FEED_D_COLOR;
+  const other = feed === 'C' ? '2D-' + nn : '1C-' + nn;
+  const otherColor = feed === 'C' ? FEED_D_COLOR : FEED_C_COLOR;
+  const fullName = 'PNL-IRC-' + panelId;
+
+  const computeCabs = row ? row.cabinets.filter(c => c.cat === 'compute') : [];
+  const netCabs = row ? row.cabinets.filter(c => c.cat === 'network') : [];
+  const emptyCabs = row ? row.cabinets.filter(c => c.cat === 'empty') : [];
+
+  const dp = document.getElementById('detailPanel');
+  dp.innerHTML = `
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+      <h3 style="margin:0;">${fullName}</h3>
+      <button class="clear-btn" onclick="clearSelection()">✕ Clear</button>
+    </div>
+
+    <div class="detail-section">
+      <h4>Panel Info</h4>
+      <div class="detail-row">
+        <span class="detail-label">Panel</span>
+        <span class="detail-value">${fullName}</span>
+      </div>
+      <div class="detail-row">
+        <span class="detail-label">Feed</span>
+        <span class="feed-badge" style="background:${color}22;color:${color};border:1px solid ${color}44;">
+          <div class="feed-dot" style="background:${color};"></div>
+          Feed ${feed} (${feed === 'C' ? '1C' : '2D'})
+        </span>
+      </div>
+      <div class="detail-row">
+        <span class="detail-label">Serves Row</span>
+        <span class="detail-value">Row ${row ? row.row : '?'}</span>
+      </div>
+      <div class="detail-row">
+        <span class="detail-label">Zone</span>
+        <span class="detail-value">${row ? row.zone.toUpperCase() : '?'}</span>
+      </div>
+      <div class="detail-row">
+        <span class="detail-label">Redundant Feed</span>
+        <span class="feed-badge" style="background:${otherColor}22;color:${otherColor};border:1px solid ${otherColor}44;">
+          <div class="feed-dot" style="background:${otherColor};"></div>
+          PNL-IRC-${other}
+        </span>
+      </div>
+    </div>
+
+    <div class="detail-section">
+      <h4>What goes down if this panel fails?</h4>
+      ${computeCabs.length > 0 ? `
+      <div class="impact-card">
+        <div class="ic-title" style="color:#ef5350;">⚠ Compute Cabinets Impacted</div>
+        <div class="ic-sub">${computeCabs.length} compute cabinet${computeCabs.length>1?'s':''} lose one power feed</div>
+        <div style="margin-top:6px;display:flex;flex-wrap:wrap;gap:3px;">
+          ${computeCabs.map(c => `<span style="background:#0f3460;border-radius:3px;padding:2px 5px;font-size:10px;">Cab ${c.cab}</span>`).join('')}
+        </div>
+      </div>
+      <div class="note-box">
+        ℹ GPU compute cabinets (HD-GB3d) are dual-fed by both Feed C and Feed D panels for the same row. Losing this panel reduces redundancy but does not cause an immediate outage if the redundant panel is healthy.
+      </div>` : ''}
+      ${netCabs.length > 0 ? `
+      <div class="impact-card" style="margin-top:6px;">
+        <div class="ic-title" style="color:#FFA726;">Network / EOR Cabinets</div>
+        <div class="ic-sub">${netCabs.length} network cabinet${netCabs.length>1?'s':''} in this row</div>
+        <div style="margin-top:6px;display:flex;flex-wrap:wrap;gap:3px;">
+          ${netCabs.map(c => `<span style="background:#0f3460;border-radius:3px;padding:2px 5px;font-size:10px;">${c.type} (Cab ${c.cab})</span>`).join('')}
+        </div>
+      </div>` : ''}
+    </div>
+
+    <div class="detail-section">
+      <h4>Cabinet Summary</h4>
+      <div class="detail-row">
+        <span class="detail-label">Compute</span>
+        <span class="detail-value">${computeCabs.length} cabinets</span>
+      </div>
+      <div class="detail-row">
+        <span class="detail-label">Network / EOR</span>
+        <span class="detail-value">${netCabs.length} cabinets</span>
+      </div>
+      <div class="detail-row">
+        <span class="detail-label">Reserved</span>
+        <span class="detail-value">${emptyCabs.length} cabinets</span>
+      </div>
+    </div>
+  `;
+}
+
+function showCabinetDetail(row, cab) {
+  const desc = CAB_DESCRIPTIONS[cab.type] || cab.type;
+  const isCompute = cab.cat === 'compute';
+  const isNetwork = cab.cat === 'network';
+  const panelNN = row.panel;
+
+  const dp = document.getElementById('detailPanel');
+  dp.innerHTML = `
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+      <h3 style="margin:0;">Cabinet ${cab.cab}</h3>
+      <button class="clear-btn" onclick="clearSelection()">✕ Clear</button>
+    </div>
+
+    <div class="detail-section">
+      <h4>Cabinet Info</h4>
+      <div class="detail-row">
+        <span class="detail-label">Cab #</span>
+        <span class="detail-value">${cab.cab}</span>
+      </div>
+      <div class="detail-row">
+        <span class="detail-label">Row</span>
+        <span class="detail-value">${row.row}</span>
+      </div>
+      <div class="detail-row">
+        <span class="detail-label">Type</span>
+        <span class="detail-value">${cab.type}</span>
+      </div>
+      <div class="detail-row">
+        <span class="detail-label">Category</span>
+        <span class="detail-value" style="text-transform:capitalize;">${cab.cat}</span>
+      </div>
+      <div class="detail-row">
+        <span class="detail-label">Zone</span>
+        <span class="detail-value">${row.zone.toUpperCase()}</span>
+      </div>
+      <div class="detail-row" style="margin-top:4px;">
+        <span class="detail-label" style="color:#90a4ae;font-size:10px;">${desc}</span>
+      </div>
+    </div>
+
+    ${panelNN ? `
+    <div class="detail-section">
+      <h4>Power Feeds</h4>
+      <div style="display:flex;flex-direction:column;gap:4px;margin-bottom:6px;">
+        <div class="feed-badge" style="background:${FEED_C_COLOR}22;color:${FEED_C_COLOR};border:1px solid ${FEED_C_COLOR}44;cursor:pointer;" onclick="selectPanel('1C-${panelNN}')">
+          <div class="feed-dot" style="background:${FEED_C_COLOR};"></div>
+          PNL-IRC-1C-${panelNN} (Feed C) ↗
+        </div>
+        <div class="feed-badge" style="background:${FEED_D_COLOR}22;color:${FEED_D_COLOR};border:1px solid ${FEED_D_COLOR}44;cursor:pointer;" onclick="selectPanel('2D-${panelNN}')">
+          <div class="feed-dot" style="background:${FEED_D_COLOR};"></div>
+          PNL-IRC-2D-${panelNN} (Feed D) ↗
+        </div>
+      </div>
+      ${isCompute ? `
+      <div class="note-box">
+        ℹ This cabinet has dual-feed redundancy. Losing one panel does not cause an immediate outage.
+        ${cab.type === 'HD-GB3d' ? '<br><br>⚡ <strong>136kW GPU compute</strong> (HD-GB3d) — busway fed overhead.' : ''}
+      </div>` : ''}
+      ${isNetwork ? `
+      <div class="note-box">
+        ℹ Network/EOR cabinets may have independent power circuits. Confirm with electrical drawings.
+      </div>` : ''}
+    </div>` : `
+    <div class="detail-section">
+      <h4>Power Feeds</h4>
+      <div class="note-box" style="color:#78909c;">
+        No IRC panel assigned to this row. Power source may be from facility infrastructure circuits.
+      </div>
+    </div>`}
+
+    <div class="detail-section">
+      <h4>Row Context</h4>
+      <div class="detail-row">
+        <span class="detail-label">Row #</span>
+        <span class="detail-value">${row.row}</span>
+      </div>
+      <div class="detail-row">
+        <span class="detail-label">Row Type</span>
+        <span class="detail-value">${row.type || '—'}</span>
+      </div>
+      <div class="detail-row">
+        <span class="detail-label">Cabinets in Row</span>
+        <span class="detail-value">${row.cabinets.length}</span>
+      </div>
+    </div>
+  `;
+}
+
+// ── Search ────────────────────────────────────────────────────────────────
+function doSearch(q) {
+  const res = document.getElementById('searchResults');
+  res.innerHTML = '';
+  if (!q || q.length < 2) return;
+  q = q.toLowerCase();
+
+  const hits = [];
+  ROWS.forEach(row => {
+    row.cabinets.forEach(c => {
+      if (
+        String(c.cab).includes(q) ||
+        c.type.toLowerCase().includes(q) ||
+        (CAB_DESCRIPTIONS[c.type] || '').toLowerCase().includes(q)
+      ) {
+        hits.push({row, cab: c});
+      }
+    });
+  });
+
+  hits.slice(0, 8).forEach(h => {
+    const el = document.createElement('div');
+    el.className = 'search-result-item';
+    el.innerHTML = `<span style="color:#90a4ae;">Cab ${h.cab.cab}</span> ${h.cab.type} <span style="color:#546e7a;">(Row ${h.row.row})</span>`;
+    el.onclick = () => {
+      document.getElementById('searchInput').value = '';
+      res.innerHTML = '';
+      selectCabinet(h.row, h.cab);
+      const el2 = document.getElementById('cab-' + h.row.row + '-' + h.cab.cab);
+      if (el2) el2.scrollIntoView({behavior:'smooth', block:'center'});
+    };
+    res.appendChild(el);
+  });
+}
+
+// ── Init ──────────────────────────────────────────────────────────────────
+buildPanelSidebar();
+buildFloorPlan();
+</script>
+</body>
+</html>

@@ -1,0 +1,463 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>VO201 Power Overview — DH1 & DH2</title>
+<style>
+  :root {
+    --bg: #f0f2f8; --nav: #fff; --nav-border: rgba(0,0,0,0.08);
+    --tab-bg: #f0f2f8; --tab-active: #fff; --tab-color: #64748b;
+    --tab-active-color: #1e2a3a; --acc: #6366f1; --shadow: rgba(0,0,0,0.06);
+    --board-bg: #fff; --board-border: rgba(0,0,0,0.08);
+    --board-hdr: #f8fafc; --board-text: #1e2a3a; --board-sub: #64748b;
+  }
+  [data-theme="dark"] {
+    --bg: #07090f; --nav: #0e1320; --nav-border: rgba(255,255,255,0.07);
+    --tab-bg: #0e1320; --tab-active: #1a2035; --tab-color: #4a5578;
+    --tab-active-color: #c8d0e0; --acc: #818cf8; --shadow: rgba(0,0,0,0.3);
+    --board-bg: #0e1320; --board-border: rgba(255,255,255,0.07);
+    --board-hdr: #0a0d18; --board-text: #c8d0e0; --board-sub: #4a5578;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { height: 100%; background: var(--bg); font-family: -apple-system, 'Segoe UI', system-ui, sans-serif; display: flex; flex-direction: column; }
+  .nav { background: var(--nav); border-bottom: 1px solid var(--nav-border); padding: 0 16px; display: flex; align-items: center; gap: 4px; flex-shrink: 0; box-shadow: 0 1px 4px var(--shadow); height: 42px; }
+  .nav-logo { height: 24px; width: auto; display: block; border-radius: 4px; background: #fff; padding: 2px 4px; }
+  .nav-title { font-size: 13px; font-weight: 700; color: var(--acc); margin-right: 12px; letter-spacing: -0.2px; white-space: nowrap; }
+  .tab { padding: 6px 14px; border-radius: 6px; cursor: pointer; font-size: 12px; font-weight: 600; color: var(--tab-color); background: transparent; border: 1px solid transparent; transition: all 0.15s; white-space: nowrap; }
+  .tab:hover { background: var(--tab-bg); border-color: var(--nav-border); }
+  .tab.active { background: var(--tab-active); color: var(--tab-active-color); border-color: var(--nav-border); box-shadow: 0 1px 3px var(--shadow); }
+  .theme-btn { margin-left: auto; padding: 5px 12px; border-radius: 6px; cursor: pointer; font-size: 11px; font-weight: 600; background: var(--tab-bg); color: var(--tab-color); border: 1px solid var(--nav-border); transition: all 0.15s; font-family: inherit; }
+  .theme-btn:hover { color: var(--tab-active-color); }
+  .jira-btn { padding: 5px 10px; border-radius: 6px; cursor: pointer; font-size: 11px; font-weight: 600; background: var(--tab-bg); color: var(--tab-color); border: 1px solid var(--nav-border); transition: all 0.15s; font-family: inherit; white-space: nowrap; }
+  .jira-btn:hover { color: var(--tab-active-color); }
+  .jira-btn.ok { color: #22c55e; border-color: rgba(34,197,94,0.35); }
+  .jira-btn.err { color: #ef4444; border-color: rgba(239,68,68,0.35); }
+  .jira-btn.board-open { color: var(--acc); border-color: rgba(99,102,241,0.4); background: rgba(99,102,241,0.08); }
+
+  /* Settings modal */
+  #settings-modal { display:none; position:fixed; inset:0; background:rgba(0,0,0,0.5); z-index:1000; align-items:center; justify-content:center; }
+  #settings-modal.open { display:flex; }
+  #settings-box { background:var(--nav); border:1px solid var(--nav-border); border-radius:12px; width:380px; max-width:92vw; padding:22px; box-shadow:0 8px 32px rgba(0,0,0,0.25); }
+  .s-title { font-size:14px; font-weight:700; color:var(--tab-active-color); margin-bottom:3px; }
+  .s-sub { font-size:11px; color:var(--tab-color); margin-bottom:16px; }
+  .s-label { display:block; font-size:11px; color:var(--tab-color); margin-bottom:4px; margin-top:12px; }
+  .s-input { width:100%; background:var(--bg); border:1px solid var(--nav-border); border-radius:6px; color:var(--tab-active-color); padding:7px 10px; font-size:12px; outline:none; font-family:inherit; box-sizing:border-box; }
+  .s-input:focus { border-color:var(--acc); }
+  .s-note { font-size:10px; color:var(--tab-color); margin-top:10px; line-height:1.65; padding:8px 10px; background:var(--bg); border-radius:6px; border:1px solid var(--nav-border); }
+  .s-note code { font-family:monospace; font-size:10px; }
+  .s-btns { display:flex; gap:8px; margin-top:16px; justify-content:flex-end; }
+  .s-btn { padding:7px 16px; border-radius:6px; font-size:12px; font-weight:600; cursor:pointer; font-family:inherit; }
+  .s-btn-save { background:var(--acc); color:#fff; border:none; }
+  .s-btn-cancel { background:var(--tab-bg); color:var(--tab-color); border:1px solid var(--nav-border); }
+
+  /* Main layout */
+  .frame-wrap { flex: 1; display: flex; overflow: hidden; }
+  #iframe-area { flex: 1; position: relative; }
+  iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: none; display: none; }
+  iframe.active { display: block; }
+
+  /* Jira board panel */
+  #jira-board { width: 310px; flex-shrink: 0; background: var(--board-bg); border-right: 1px solid var(--board-border); display: none; flex-direction: column; overflow: hidden; }
+  #jira-board.open { display: flex; }
+  .jb-header { padding: 10px 14px 8px; background: var(--board-hdr); border-bottom: 1px solid var(--board-border); flex-shrink: 0; display: flex; align-items: center; justify-content: space-between; }
+  .jb-title { font-size: 11px; font-weight: 700; color: var(--board-text); }
+  .jb-count { font-size: 10px; color: var(--board-sub); }
+  .jb-empty { padding: 32px 16px; text-align: center; font-size: 11px; color: var(--board-sub); line-height: 1.8; }
+  .jb-scroll { flex: 1; overflow-y: auto; }
+  .jb-scroll::-webkit-scrollbar { width: 4px; }
+  .jb-scroll::-webkit-scrollbar-track { background: transparent; }
+  .jb-scroll::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.1); border-radius: 2px; }
+
+  /* DH section headers */
+  .jb-dh-hdr { padding: 7px 14px; background: var(--board-hdr); border-top: 2px solid var(--board-border); display: flex; align-items: center; gap: 7px; cursor: pointer; user-select: none; }
+  .jb-dh-hdr:first-child { border-top: none; }
+  .jb-dh-hdr:hover { background: rgba(99,102,241,0.04); }
+  .jb-dh-name { font-size: 11px; font-weight: 700; color: var(--board-text); flex: 1; }
+  .jb-dh-sub { font-size: 9px; color: var(--board-sub); font-weight: 600; background: var(--bg); border: 1px solid var(--board-border); border-radius: 3px; padding: 1px 5px; }
+  .jb-dh-tally { font-size: 10px; color: var(--board-sub); }
+  .jb-chevron { font-size: 9px; color: var(--board-sub); flex-shrink: 0; width: 10px; text-align: center; }
+
+  /* Status groups */
+  .jb-status-row { display: flex; align-items: center; gap: 6px; padding: 6px 14px 4px 10px; cursor: pointer; user-select: none; border-top: 1px solid var(--board-border); transition: background 0.1s; }
+  .jb-status-row:hover { background: rgba(99,102,241,0.05); }
+  .jb-status-row.active { background: rgba(99,102,241,0.1); }
+  .jb-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+  .jb-dot.red { background: #ef4444; }
+  .jb-dot.blue { background: #3b82f6; }
+  .jb-dot.green { background: #16a34a; }
+  .jb-status-name { flex: 1; font-size: 11px; font-weight: 700; color: var(--board-text); }
+  .jb-status-count { font-size: 10px; color: var(--board-sub); white-space: nowrap; }
+
+  /* Ticket rows */
+  .jb-tickets { padding: 0 10px 6px 29px; }
+  .jb-ticket { display: flex; align-items: baseline; gap: 5px; padding: 3px 4px; border-top: 1px solid rgba(0,0,0,0.04); min-width: 0; border-radius: 4px; cursor: pointer; transition: background 0.1s; }
+  .jb-ticket:first-child { border-top: none; }
+  .jb-ticket:hover { background: rgba(99,102,241,0.06); }
+  .jb-ticket.active { background: rgba(99,102,241,0.1); }
+  .jb-ticket-key { color: var(--acc); font-family: monospace; font-weight: 700; font-size: 10px; flex-shrink: 0; text-decoration: none; }
+  .jb-ticket-key:hover { text-decoration: underline; }
+  .jb-ticket-sum { flex: 1; font-size: 10px; color: var(--board-sub); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+  .jb-rack-chips { display: flex; gap: 3px; flex-shrink: 0; flex-wrap: wrap; justify-content: flex-end; max-width: 90px; }
+  .jb-chip { font-size: 9px; font-weight: 700; padding: 1px 5px; border-radius: 3px; cursor: pointer; border: 1px solid rgba(0,0,0,0.1); color: var(--board-sub); background: var(--board-hdr); white-space: nowrap; transition: all 0.1s; }
+  .jb-chip:hover { color: var(--acc); border-color: rgba(99,102,241,0.4); background: rgba(99,102,241,0.08); }
+  .jb-chip.active { color: var(--acc); border-color: rgba(99,102,241,0.5); background: rgba(99,102,241,0.12); }
+</style>
+</head>
+<body>
+<div class="nav">
+  <img src="cw logo.png" class="nav-logo" alt="CoreWeave">
+  <div class="nav-title">VO201 Power Overview</div>
+  <div class="tab active" id="tab-dh1" onclick="switchTab('dh1')">DH1 — Albatross</div>
+  <div class="tab" id="tab-dh2" onclick="switchTab('dh2')">DH2 — Phoenix</div>
+  <button class="jira-btn" id="jira-btn" onclick="fetchJira()" title="Refresh Jira ticket data">&#8635; Jira</button>
+  <button class="jira-btn" id="jira-board-btn" onclick="toggleJiraPanel()" title="Show Jira tickets and highlight cabs">🎫 Tickets</button>
+  <button class="theme-btn" onclick="toggleTheme()">&#9790; Dark</button>
+  <button class="theme-btn" onclick="openSettings()" title="Jira settings" style="margin-left:4px;">&#9881;</button>
+</div>
+
+<div id="settings-modal" onclick="if(event.target===this)closeSettings()">
+  <div id="settings-box">
+    <div class="s-title">Jira Settings</div>
+    <div class="s-sub">Credentials are saved locally in your browser only.</div>
+    <label class="s-label">Email</label>
+    <input class="s-input" id="s-email" type="email" placeholder="you@coreweave.com">
+    <label class="s-label">API Token</label>
+    <input class="s-input" id="s-token" type="password" placeholder="Paste your Jira API token">
+    <div class="s-note">
+      The Jira proxy must be running before fetching:<br>
+      <code>python3 "VO201 Power Project/jira-proxy.py"</code>
+    </div>
+    <div class="s-btns">
+      <button class="s-btn s-btn-cancel" onclick="closeSettings()">Cancel</button>
+      <button class="s-btn s-btn-save" onclick="saveSettings()">Save &amp; Fetch</button>
+    </div>
+  </div>
+</div>
+
+<div class="frame-wrap">
+  <div id="jira-board">
+    <div class="jb-header">
+      <span class="jb-title">&#128204; Jira Tickets</span>
+      <span class="jb-count" id="jb-count"></span>
+    </div>
+    <div class="jb-scroll" id="jb-scroll">
+      <div class="jb-empty">Fetch Jira data to see<br>open tickets by status</div>
+    </div>
+  </div>
+  <div id="iframe-area">
+    <iframe id="frame-dh1" class="active" src="VO201-dh1-albatross.html" onload="sendJira('frame-dh1',jiraMap1)"></iframe>
+    <iframe id="frame-dh2" src="VO201-dh2-phoenix.html" onload="sendJira('frame-dh2',jiraMap2)"></iframe>
+  </div>
+</div>
+
+<script>
+var jiraMap1 = {}, jiraMap2 = {};
+var JIRA_BASE = 'http://localhost:8098';
+var jiraHighlightOn = false;
+var jiraBoardOpen = false;
+var jiraFilter = null; // { type: 'status'|'ticket', key, dh1racks, dh2racks }
+
+var JIRA_RED  = ['Waiting for Support','Awaiting Support','Awaiting Triage','RMA System Prep Needed','RMA System Return'];
+var JIRA_BLUE = ['In Progress'];
+
+function dotClass(status) {
+  return JIRA_RED.indexOf(status) >= 0 ? 'red' : JIRA_BLUE.indexOf(status) >= 0 ? 'blue' : 'green';
+}
+
+// ── Jira board panel ─────────────────────────────────────────────────────────
+
+function toggleJiraPanel() {
+  jiraBoardOpen = !jiraBoardOpen;
+  jiraHighlightOn = jiraBoardOpen;
+  document.getElementById('jira-board').classList.toggle('open', jiraBoardOpen);
+  document.getElementById('jira-board-btn').className = jiraBoardOpen ? 'jira-btn board-open' : 'jira-btn';
+  if (jiraBoardOpen) buildJiraBoard();
+  sendHighlight('frame-dh1');
+  sendHighlight('frame-dh2');
+}
+
+var grpIdx = 0;
+
+function buildJiraBoard() {
+  var scroll = document.getElementById('jb-scroll');
+  var countEl = document.getElementById('jb-count');
+  var r1 = Object.keys(jiraMap1).length, r2 = Object.keys(jiraMap2).length;
+
+  if (!r1 && !r2) {
+    scroll.innerHTML = '<div class="jb-empty">No open Jira tickets found.<br>Make sure the proxy is running<br>and credentials are set.</div>';
+    countEl.textContent = '';
+    return;
+  }
+
+  grpIdx = 0;
+  function buildStatusMap(jiraMap) {
+    var byStatus = {};
+    Object.keys(jiraMap).forEach(function(rack) {
+      jiraMap[rack].forEach(function(t) {
+        if (!byStatus[t.status]) byStatus[t.status] = {};
+        if (!byStatus[t.status][t.key]) byStatus[t.status][t.key] = { summary: t.summary, racks: [] };
+        byStatus[t.status][t.key].racks.push(rack);
+      });
+    });
+    return byStatus;
+  }
+
+  function renderDH(jiraMap, dhId, label, project) {
+    var byStatus = buildStatusMap(jiraMap);
+    var statuses = Object.keys(byStatus).sort(function(a, b) {
+      function pri(s) { return JIRA_RED.indexOf(s) >= 0 ? 0 : JIRA_BLUE.indexOf(s) >= 0 ? 1 : 2; }
+      return pri(a) - pri(b);
+    });
+    var totalTickets = 0;
+    statuses.forEach(function(s) { totalTickets += Object.keys(byStatus[s]).length; });
+    var dhGrp = 'dh-content-' + dhId;
+    var html = '<div class="jb-dh-hdr" onclick="toggleGroup(\'' + dhGrp + '\')">'
+      + '<span class="jb-chevron" id="chev-' + dhGrp + '">&#9660;</span>'
+      + '<span class="jb-dh-name">' + label + '</span>'
+      + '<span class="jb-dh-sub">' + project + '</span>'
+      + '<span class="jb-dh-tally">' + totalTickets + 't &middot; ' + Object.keys(jiraMap).length + 'r</span>'
+      + '</div>'
+      + '<div id="' + dhGrp + '">';
+
+    statuses.forEach(function(status) {
+      var ticketMap = byStatus[status];
+      var ticketKeys = Object.keys(ticketMap);
+      var totalRacks = 0;
+      ticketKeys.forEach(function(k) { totalRacks += ticketMap[k].racks.length; });
+      var grpId = 'grp-' + (grpIdx++);
+      var isActive = jiraFilter && jiraFilter.key === 'status:' + dhId + ':' + status;
+      html += '<div class="jb-status-row' + (isActive ? ' active' : '') + '" data-status="' + status.replace(/"/g, '&quot;') + '" data-dh="' + dhId + '" onclick="handleBoardStatusClick(this)">'
+        + '<span class="jb-chevron" id="chev-' + grpId + '" data-grp="' + grpId + '" onclick="event.stopPropagation();toggleGroup(\'' + grpId + '\')">&#9660;</span>'
+        + '<div class="jb-dot ' + dotClass(status) + '"></div>'
+        + '<span class="jb-status-name">' + status + '</span>'
+        + '<span class="jb-status-count">' + ticketKeys.length + 't &middot; ' + totalRacks + 'r</span>'
+        + '</div>'
+        + '<div class="jb-tickets" id="' + grpId + '">';
+
+      ticketKeys.forEach(function(key) {
+        var info = ticketMap[key];
+        var fKey = 'ticket:' + dhId + ':' + key;
+        var isTicketActive = jiraFilter && jiraFilter.key === fKey;
+        var chips = info.racks.map(function(r) {
+          return '<span class="jb-chip' + (isTicketActive ? ' active' : '') + '" data-dh="' + dhId + '" data-racks="' + r + '" data-ticketkey="' + key + '" onclick="event.stopPropagation();handleChipClick(this)">R' + r + '</span>';
+        }).join('');
+        html += '<div class="jb-ticket' + (isTicketActive ? ' active' : '') + '" data-dh="' + dhId + '" data-key="' + key + '" data-racks="' + info.racks.join(',') + '" onclick="handleTicketRowClick(this)">'
+          + '<a class="jb-ticket-key" href="https://coreweave.atlassian.net/browse/' + key + '" target="_blank" onclick="event.stopPropagation()">' + key + '</a>'
+          + '<span class="jb-ticket-sum" title="' + info.summary.replace(/"/g, '&quot;') + '">' + info.summary.slice(0, 48) + '</span>'
+          + '<span class="jb-rack-chips">' + chips + '</span>'
+          + '</div>';
+      });
+      html += '</div>';
+    });
+    html += '</div>';
+    return html;
+  }
+
+  var totalRacks = r1 + r2;
+  var totalTickets = 0;
+  [jiraMap1, jiraMap2].forEach(function(m) {
+    Object.keys(m).forEach(function(r) { totalTickets += m[r].length; });
+  });
+  countEl.textContent = totalTickets + ' tickets · ' + totalRacks + ' racks';
+
+  var html = '';
+  if (r1) html += renderDH(jiraMap1, 'dh1', 'DH1 — Albatross', 'SDA');
+  if (r2) html += renderDH(jiraMap2, 'dh2', 'DH2 — Phoenix', 'DO');
+  scroll.innerHTML = html;
+}
+
+function toggleGroup(id) {
+  var el = document.getElementById(id);
+  if (!el) return;
+  var isOpen = el.style.display !== 'none';
+  el.style.display = isOpen ? 'none' : '';
+  var chev = document.getElementById('chev-' + id);
+  if (chev) chev.innerHTML = isOpen ? '&#9654;' : '&#9660;';
+}
+
+function handleBoardStatusClick(el) {
+  var status = el.dataset.status;
+  var dh = el.dataset.dh;
+  var key = 'status:' + dh + ':' + status;
+  var jiraMap = dh === 'dh1' ? jiraMap1 : jiraMap2;
+  var frameId = 'frame-' + dh;
+  if (jiraFilter && jiraFilter.key === key) {
+    jiraFilter = null;
+    clearHighlightBoth();
+  } else {
+    var racks = Object.keys(jiraMap).filter(function(r) {
+      return jiraMap[r].some(function(t) { return t.status === status; });
+    });
+    jiraFilter = { key: key };
+    sendHighlightCabs(frameId, racks);
+    sendClearHighlight('frame-' + (dh === 'dh1' ? 'dh2' : 'dh1'));
+    switchTab(dh);
+  }
+  buildJiraBoard();
+}
+
+function handleTicketRowClick(el) {
+  var dh = el.dataset.dh;
+  var key = el.dataset.key;
+  var racks = el.dataset.racks.split(',');
+  var fKey = 'ticket:' + dh + ':' + key;
+  if (jiraFilter && jiraFilter.key === fKey) {
+    jiraFilter = null;
+    clearHighlightBoth();
+  } else {
+    jiraFilter = { key: fKey };
+    switchTab(dh);
+    setTimeout(function() {
+      sendHighlightCabs('frame-' + dh, racks);
+      sendClearHighlight('frame-' + (dh === 'dh1' ? 'dh2' : 'dh1'));
+    }, 60);
+  }
+  buildJiraBoard();
+}
+
+function handleChipClick(el) {
+  var dh = el.dataset.dh;
+  var rack = el.dataset.racks;
+  var ticketKey = el.dataset.ticketkey;
+  var fKey = 'ticket:' + dh + ':' + ticketKey;
+  if (jiraFilter && jiraFilter.key === fKey) {
+    jiraFilter = null;
+    clearHighlightBoth();
+  } else {
+    jiraFilter = { key: fKey };
+    switchTab(dh);
+    setTimeout(function() {
+      sendHighlightCabs('frame-' + dh, [rack]);
+      sendClearHighlight('frame-' + (dh === 'dh1' ? 'dh2' : 'dh1'));
+    }, 60);
+  }
+  buildJiraBoard();
+}
+
+function sendHighlightCabs(frameId, racks) {
+  var f = document.getElementById(frameId);
+  if (!f || !f.contentWindow) return;
+  f.contentWindow.postMessage({ type: 'highlightCabsJira', racks: racks }, '*');
+}
+
+function sendClearHighlight(frameId) {
+  var f = document.getElementById(frameId);
+  if (!f || !f.contentWindow) return;
+  f.contentWindow.postMessage({ type: 'clearJiraFilter' }, '*');
+}
+
+function clearHighlightBoth() {
+  sendClearHighlight('frame-dh1');
+  sendClearHighlight('frame-dh2');
+}
+
+// ── Existing functions ────────────────────────────────────────────────────────
+
+function sendHighlight(frameId) {
+  var f = document.getElementById(frameId);
+  if (!f || !f.contentWindow) return;
+  f.contentWindow.postMessage({ type: 'highlightJira', on: jiraHighlightOn }, '*');
+}
+
+function openSettings() {
+  document.getElementById('s-email').value = localStorage.getItem('jira_email') || '';
+  document.getElementById('s-token').value = localStorage.getItem('jira_token') || '';
+  document.getElementById('settings-modal').classList.add('open');
+}
+function closeSettings() { document.getElementById('settings-modal').classList.remove('open'); }
+function saveSettings() {
+  localStorage.setItem('jira_email', document.getElementById('s-email').value.trim());
+  localStorage.setItem('jira_token', document.getElementById('s-token').value.trim());
+  closeSettings();
+  fetchJira();
+}
+
+function buildRackMap(issues) {
+  var map = {};
+  issues.forEach(function(iss) {
+    var sources = (iss.fields.customfield_10207 || []).concat(iss.fields.labels || []).concat([iss.fields.summary || '']);
+    var seen = {};
+    sources.forEach(function(src) {
+      var re = /US-VO201\.DH[12]\.R(\d+)/gi, m;
+      while ((m = re.exec(src)) !== null) {
+        var rack = parseInt(m[1]);
+        if (seen[rack]) return; seen[rack] = true;
+        if (!map[rack]) map[rack] = [];
+        map[rack].push({ key: iss.key, summary: iss.fields.summary, status: (iss.fields.status || {}).name || '?', priority: (iss.fields.priority || {}).name || '?' });
+      }
+    });
+  });
+  return map;
+}
+
+function sendJira(frameId, rackMap) {
+  var f = document.getElementById(frameId);
+  if (!f || !f.contentWindow) return;
+  f.contentWindow.postMessage({ type: 'jiraData', map: rackMap || {} }, '*');
+}
+
+async function fetchJira() {
+  var email = localStorage.getItem('jira_email');
+  var token = localStorage.getItem('jira_token');
+  if (!email || !token) { openSettings(); return; }
+  var btn = document.getElementById('jira-btn');
+  btn.textContent = '↻ Jira';
+  btn.className = 'jira-btn';
+  try {
+    var hdrs = { 'Authorization': 'Basic ' + btoa(email + ':' + token), 'Accept': 'application/json' };
+    var r1 = await fetch(JIRA_BASE + '/rest/api/3/search/jql?jql=' + encodeURIComponent('project = SDA AND cf[10194] = "ORD3" AND cf[10207] is not EMPTY AND statusCategory != "Done"') + '&fields=summary,status,priority,customfield_10207&maxResults=500', { headers: hdrs });
+    var d1 = await r1.json();
+    var dh1 = (d1.issues || []).filter(function(i) { return (i.fields.customfield_10207 || []).some(function(l) { return /US-VO201\.DH1/i.test(l); }); });
+    var r2 = await fetch(JIRA_BASE + '/rest/api/3/search/jql?jql=' + encodeURIComponent('project = "DO" AND text ~ "US-VO201" AND statusCategory != "Done"') + '&fields=summary,status,priority,customfield_10207&maxResults=500', { headers: hdrs });
+    var d2 = await r2.json();
+    var dh2 = (d2.issues || []).filter(function(i) { return (i.fields.customfield_10207 || []).some(function(l) { return /US-VO201\.DH2/i.test(l); }); });
+    jiraMap1 = buildRackMap(dh1);
+    jiraMap2 = buildRackMap(dh2);
+    sendJira('frame-dh1', jiraMap1);
+    sendJira('frame-dh2', jiraMap2);
+    var t = Object.keys(jiraMap1).length + Object.keys(jiraMap2).length;
+    btn.textContent = '\u2713 ' + t + ' rack' + (t !== 1 ? 's' : '');
+    btn.className = 'jira-btn ok';
+    if (jiraBoardOpen) buildJiraBoard();
+  } catch(e) {
+    btn.textContent = '! Jira';
+    btn.className = 'jira-btn err';
+    console.error('Jira fetch error:', e);
+  }
+}
+
+window.addEventListener('load', function() {
+  applyTheme();
+  if (localStorage.getItem('jira_token')) fetchJira();
+});
+
+var D1 = "body{background:#07090f!important;color:#c8d0e0!important;}#header,#legend,#rpp-panel,#detail-panel,#stats-bar{background:#0e1320!important;border-color:rgba(255,255,255,0.07)!important;color:#c8d0e0!important;}.rpp-item:hover{background:#1a2035!important;}.rpp-item.selected{background:#1e2a50!important;border-color:rgba(99,102,241,0.4)!important;}.rpp-name{color:#c8d0e0!important;}.rpp-count{background:#1a2035!important;color:#8892a4!important;}#floor-area{background:#07090f!important;}.cabinet{background:#1a2540!important;border-color:rgba(100,130,200,0.2)!important;box-shadow:inset 0 1px 0 rgba(255,255,255,0.08)!important;}.cabinet.special{background:#1e2a50!important;border-color:rgba(120,150,220,0.25)!important;}.cabinet.net-cab{background:#0f1e2e!important;border-color:rgba(80,140,220,0.25)!important;}.cabinet.infra-cab{background:#12182e!important;border-color:rgba(90,120,200,0.2)!important;}.cabinet.highlighted{border-color:#f59e0b!important;}.detail-empty{color:#3a4565!important;}.info-row{border-color:rgba(255,255,255,0.05)!important;}.info-row .lbl{color:#4a5578!important;}.info-row .val{color:#c8d0e0!important;}.impact-box{background:#1a0a30!important;border-color:#4a1d8a!important;}.net-impact-box{background:#0a1a30!important;border-color:#1d4a8a!important;}.server-item{background:#111828!important;border-color:rgba(255,255,255,0.05)!important;}.net-item{background:#111828!important;border-color:rgba(255,255,255,0.05)!important;}.cab-server-card{background:#111828!important;border-color:rgba(255,255,255,0.06)!important;}.srv-loc,.net-loc,.srv-note,.srv-serial{color:#8892a4!important;}.detail-section h3{color:#3a4565!important;border-color:rgba(255,255,255,0.06)!important;}#header h1{color:#c8d0e0!important;}#header .subtitle{color:#4a5578!important;}.leg-title{color:#4a5578!important;}.leg-item{color:#7080a0!important;}.leg-item.feed-active{background:rgba(99,102,241,0.15)!important;border-color:rgba(99,102,241,0.35)!important;}#search-box input{background:#0e1320!important;border-color:rgba(255,255,255,0.1)!important;color:#c8d0e0!important;}#search-results{background:#0e1320!important;border-color:rgba(255,255,255,0.1)!important;}.sr-item:hover{background:#1a2035!important;}.sr-detail{color:#4a5578!important;}.sr-rpp-badge{background:#1e1240!important;color:#a78bfa!important;}.pod-div{color:#2a3555!important;border-color:#2a3555!important;}.rpp-group-header{color:#2a3555!important;}#export-box{background:#0e1320!important;}.ex-head{border-color:rgba(255,255,255,0.07)!important;}.ex-title{color:#c8d0e0!important;}.ex-count{color:#4a5578!important;}.ex-close{background:#1a2035!important;border-color:rgba(255,255,255,0.08)!important;color:#4a5578!important;}.ex-close:hover{background:#232d48!important;color:#c8d0e0!important;}#ex-textarea{background:#07090f!important;border-color:rgba(255,255,255,0.1)!important;color:#8892a4!important;}.ex-btn-dl{background:#1a2035!important;color:#8892a4!important;border-color:rgba(255,255,255,0.08)!important;}.ex-btn-dl:hover{background:#232d48!important;color:#c8d0e0!important;}.ex-open-btn{background:#1a2035!important;border-color:rgba(255,255,255,0.08)!important;color:#4a5578!important;}.ex-open-btn:hover{color:#818cf8!important;}.js-header{background:#0a0d18!important;border-color:rgba(255,255,255,0.06)!important;}.js-status-name{color:#c8d0e0!important;}.js-status-row:hover{background:rgba(99,102,241,0.08)!important;}.js-status-row.active{background:rgba(99,102,241,0.15)!important;}";
+var D2 = "body{background:#07090f!important;color:#c8d0e0!important;}#header{background:#0e1320!important;border-color:rgba(255,255,255,0.07)!important;}#legend{background:#0e1320!important;border-color:rgba(255,255,255,0.06)!important;}.panel-sidebar{background:#0e1320!important;border-color:rgba(255,255,255,0.07)!important;}.panel-sidebar h2{color:#4a5578!important;border-color:rgba(255,255,255,0.06)!important;}.panel-item:hover{background:#1a2035!important;}.panel-item.selected{background:#1e2a50!important;border-color:rgba(99,102,241,0.4)!important;}.panel-name{color:#c8d0e0!important;}.panel-sub{color:#4a5578!important;}.floor-area{background:#07090f!important;}.zone-label{color:#2a3555!important;}.row-num{color:#2a3555!important;}.cab.compute{background:#2a6b4e!important;}.cab.network{background:#2a5280!important;}.cab.empty{background:#1a2035!important;opacity:0.6!important;}.detail-col{background:#0e1320!important;border-color:rgba(255,255,255,0.07)!important;}.detail-col-hdr{background:#0e1320!important;border-color:rgba(255,255,255,0.06)!important;color:#4a5578!important;}.detail-col-hdr button{background:#1a2035!important;border-color:rgba(255,255,255,0.08)!important;color:#4a5578!important;}.detail-panel{background:#0e1320!important;border-color:rgba(255,255,255,0.07)!important;}.detail-panel h3{color:#c8d0e0!important;}.detail-panel .empty-state{color:#2a3555!important;}.detail-section h4{color:#2a3555!important;border-color:rgba(255,255,255,0.06)!important;}.detail-row{border-color:rgba(255,255,255,0.04)!important;}.detail-label{color:#4a5578!important;}.detail-value{color:#c8d0e0!important;}.impact-card{background:#111828!important;border-color:rgba(255,255,255,0.07)!important;}.note-box{background:#111828!important;border-color:rgba(255,255,255,0.07)!important;color:#7080a0!important;}.clear-btn{background:#2a0a0a!important;border-color:#5a2020!important;}#search-box input{background:#0e1320!important;border-color:rgba(255,255,255,0.1)!important;color:#c8d0e0!important;}#searchResults{background:#0e1320!important;border-color:rgba(255,255,255,0.1)!important;}.search-result-item{color:#c8d0e0!important;}.search-result-item:hover{background:#1a2035!important;}.aisle-label{color:#1a2540!important;}.legend-item{color:#7080a0!important;}.legend-item.feed-active{background:rgba(99,102,241,0.15)!important;border-color:rgba(99,102,241,0.35)!important;}#header h1{color:#c8d0e0!important;}#header .subtitle{color:#4a5578!important;}#stats-bar{background:#07090f!important;border-color:rgba(255,255,255,0.06)!important;color:#4a5578!important;}.stat-val{color:#c8d0e0!important;}kbd{background:#1a2035!important;border-color:rgba(255,255,255,0.1)!important;color:#4a5578!important;}#export-box{background:#0e1320!important;}.ex-head{border-color:rgba(255,255,255,0.07)!important;}.ex-title{color:#c8d0e0!important;}.ex-count{color:#4a5578!important;}.ex-close{background:#1a2035!important;border-color:rgba(255,255,255,0.08)!important;color:#4a5578!important;}.ex-close:hover{background:#232d48!important;color:#c8d0e0!important;}#ex-textarea{background:#07090f!important;border-color:rgba(255,255,255,0.1)!important;color:#8892a4!important;}.ex-btn-dl{background:#1a2035!important;color:#8892a4!important;border-color:rgba(255,255,255,0.08)!important;}.ex-btn-dl:hover{background:#232d48!important;color:#c8d0e0!important;}.ex-open-btn{background:#1a2035!important;border-color:rgba(255,255,255,0.08)!important;color:#4a5578!important;}.ex-open-btn:hover{color:#818cf8!important;}.js-header{background:#0a0d18!important;border-color:rgba(255,255,255,0.06)!important;}.js-status-name{color:#c8d0e0!important;}.js-status-row:hover{background:rgba(99,102,241,0.08)!important;}.js-status-row.active{background:rgba(99,102,241,0.15)!important;}#jira-status-summary{background:#0e1320!important;border-color:rgba(255,255,255,0.07)!important;}";
+var dark = true;
+function inj(id, css) {
+  var f = document.getElementById(id);
+  if (!f || !f.contentWindow) return;
+  f.contentWindow.postMessage({ type: "setTheme", css: css }, "*");
+}
+function applyTheme() {
+  document.documentElement.setAttribute("data-theme", dark ? "dark" : "light");
+  inj("frame-dh1", dark ? D1 : "");
+  inj("frame-dh2", dark ? D2 : "");
+  document.querySelector(".theme-btn").innerHTML = dark ? "&#9728; Light" : "&#9790; Dark";
+}
+function toggleTheme() { dark = !dark; applyTheme(); }
+function switchTab(h) {
+  document.querySelectorAll(".tab").forEach(function(t) { t.classList.remove("active"); });
+  document.querySelectorAll("iframe").forEach(function(f) { f.classList.remove("active"); });
+  document.getElementById("tab-" + h).classList.add("active");
+  document.getElementById("frame-" + h).classList.add("active");
+  setTimeout(function() {
+    applyTheme();
+    if (h === 'dh1') { sendJira('frame-dh1', jiraMap1); sendHighlight('frame-dh1'); }
+    if (h === 'dh2') { sendJira('frame-dh2', jiraMap2); sendHighlight('frame-dh2'); }
+  }, 50);
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,418 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Jira Data Validator — VO201</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, 'Segoe UI', system-ui, sans-serif; background: #0d1117; color: #c9d1d9; padding: 28px; }
+  h1 { font-size: 18px; font-weight: 700; color: #e6edf3; margin-bottom: 4px; }
+  .sub { font-size: 12px; color: #6e7681; margin-bottom: 24px; }
+  .card { background: #161b22; border: 1px solid #30363d; border-radius: 10px; padding: 20px; margin-bottom: 16px; }
+  .card h2 { font-size: 11px; font-weight: 700; color: #8b949e; text-transform: uppercase; letter-spacing: 0.8px; margin-bottom: 14px; }
+  label { display: block; font-size: 12px; color: #8b949e; margin-bottom: 5px; margin-top: 10px; }
+  label:first-of-type { margin-top: 0; }
+  input { width: 100%; background: #0d1117; border: 1px solid #30363d; border-radius: 6px; color: #c9d1d9; padding: 8px 12px; font-size: 13px; outline: none; font-family: inherit; }
+  input:focus { border-color: #388bfd; box-shadow: 0 0 0 3px rgba(56,139,253,0.15); }
+  input[type=password] { font-family: monospace; }
+  button { padding: 8px 18px; border-radius: 6px; font-size: 13px; font-weight: 600; cursor: pointer; border: none; font-family: inherit; transition: all 0.15s; }
+  .btn-primary { background: #238636; color: #fff; margin-top: 14px; }
+  .btn-primary:hover { background: #2ea043; }
+  .btn-primary:disabled { background: #1a3a20; color: #4a7a50; cursor: not-allowed; }
+  .status { font-size: 12px; margin-top: 10px; padding: 8px 12px; border-radius: 6px; display: none; }
+  .status.ok { background: #0d2218; border: 1px solid #1a5c2e; color: #3fb950; display: block; }
+  .status.err { background: #2d0a0a; border: 1px solid #5c1a1a; color: #f85149; display: block; }
+  .status.loading { background: #1a1f28; border: 1px solid #30363d; color: #8b949e; display: block; }
+
+  .stat-row { display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 16px; }
+  .stat { background: #1c2128; border: 1px solid #30363d; border-radius: 8px; padding: 10px 16px; min-width: 110px; }
+  .stat-num { font-size: 24px; font-weight: 800; letter-spacing: -1px; line-height: 1; }
+  .stat-lbl { font-size: 10px; color: #6e7681; margin-top: 3px; }
+  .green { color: #3fb950; } .red { color: #f85149; } .yellow { color: #d29922; } .blue { color: #58a6ff; } .gray { color: #8b949e; }
+
+  .filter-row { display: flex; gap: 8px; margin-bottom: 12px; flex-wrap: wrap; }
+  .filter-btn { padding: 4px 12px; border-radius: 14px; font-size: 11px; font-weight: 600; cursor: pointer; border: 1px solid #30363d; background: #21262d; color: #8b949e; font-family: inherit; transition: all 0.12s; }
+  .filter-btn.active { border-color: #388bfd; color: #58a6ff; background: #0d2034; }
+
+  table { width: 100%; border-collapse: collapse; font-size: 11px; }
+  th { text-align: left; padding: 6px 10px; font-size: 10px; font-weight: 700; color: #6e7681; text-transform: uppercase; letter-spacing: 0.5px; border-bottom: 1px solid #30363d; white-space: nowrap; }
+  td { padding: 6px 10px; border-bottom: 1px solid #1c2128; vertical-align: middle; }
+  tr:last-child td { border-bottom: none; }
+  tr:hover td { background: #1c2128; }
+
+  .badge { display: inline-flex; align-items: center; gap: 4px; padding: 2px 8px; border-radius: 10px; font-size: 10px; font-weight: 700; white-space: nowrap; }
+  .b-ok     { background: #0d2218; color: #3fb950; }
+  .b-err    { background: #2d0a0a; color: #f85149; }
+  .b-warn   { background: #1a1208; color: #d29922; }
+  .b-info   { background: #0d2034; color: #58a6ff; }
+  .b-gray   { background: #1c2128; color: #6e7681; }
+
+  .mono { font-family: 'SF Mono', Consolas, monospace; font-size: 10px; }
+  a { color: #58a6ff; text-decoration: none; }
+  a:hover { text-decoration: underline; }
+  .section-tabs { display: flex; gap: 2px; margin-bottom: 16px; border-bottom: 1px solid #30363d; }
+  .stab { padding: 8px 16px; font-size: 12px; font-weight: 600; cursor: pointer; color: #6e7681; border-bottom: 2px solid transparent; transition: all 0.12s; margin-bottom: -1px; }
+  .stab.active { color: #e6edf3; border-color: #388bfd; }
+  .tab-content { display: none; }
+  .tab-content.active { display: block; }
+  ::-webkit-scrollbar { width: 5px; height: 5px; }
+  ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 3px; }
+  .overflow-table { overflow-x: auto; }
+</style>
+</head>
+<body>
+<h1>Jira Data Validator — VO201 Power Distribution</h1>
+<p class="sub">Cross-references Jira asset data against the embedded device data in VO201-dh1-albatross.html and VO201-dh2-phoenix.html</p>
+
+<div class="card">
+  <h2>Credentials</h2>
+  <label>Email</label>
+  <input type="email" id="email" value="rchairez@coreweave.com">
+  <label>API Token</label>
+  <input type="password" id="token" placeholder="Paste your Jira API token">
+  <button class="btn-primary" id="run-btn" onclick="runValidation()">Run Validation</button>
+  <div class="status" id="status"></div>
+</div>
+
+<div id="results" style="display:none">
+  <div class="section-tabs">
+    <div class="stab active" onclick="switchTab('dh1')">DH1 — Albatross</div>
+    <div class="stab" onclick="switchTab('dh2')">DH2 — Phoenix</div>
+  </div>
+
+  <!-- DH1 -->
+  <div class="tab-content active" id="tab-dh1">
+    <div class="card">
+      <h2>DH1 Summary</h2>
+      <div class="stat-row" id="dh1-stats"></div>
+      <div class="filter-row" id="dh1-filters"></div>
+      <div class="overflow-table">
+        <table id="dh1-table">
+          <thead><tr>
+            <th>Jira Key</th>
+            <th>Serial(s)</th>
+            <th>Jira Rack Location</th>
+            <th>HTML Rack</th>
+            <th>HTML RU</th>
+            <th>Result</th>
+          </tr></thead>
+          <tbody id="dh1-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+    <div class="card" id="dh1-unmatched-card" style="display:none">
+      <h2>Serials in HTML with no open Jira ticket</h2>
+      <div class="overflow-table">
+        <table>
+          <thead><tr><th>Serial</th><th>HTML Rack (cab)</th><th>HTML RU</th><th>Row</th></tr></thead>
+          <tbody id="dh1-unmatched-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- DH2 -->
+  <div class="tab-content" id="tab-dh2">
+    <div class="card">
+      <h2>DH2 Summary</h2>
+      <div class="stat-row" id="dh2-stats"></div>
+      <div class="filter-row" id="dh2-filters"></div>
+      <div class="overflow-table">
+        <table id="dh2-table">
+          <thead><tr>
+            <th>Jira Key</th>
+            <th>Serial(s)</th>
+            <th>Asset Tag(s)</th>
+            <th>Jira Rack Location</th>
+            <th>Cab in HTML?</th>
+            <th>Model</th>
+            <th>Result</th>
+          </tr></thead>
+          <tbody id="dh2-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+const BASE = 'http://localhost:8098';
+const JIRA_WEB = 'https://coreweave.atlassian.net';
+
+function auth() {
+  return 'Basic ' + btoa(document.getElementById('email').value.trim() + ':' + document.getElementById('token').value.trim());
+}
+function setStatus(msg, type) {
+  const el = document.getElementById('status');
+  el.textContent = msg;
+  el.className = 'status ' + type;
+}
+
+// ── Fetch helpers ─────────────────────────────────────────────────────────
+async function jiraSearchAll(jql, fields) {
+  let issues = [], start = 0;
+  while (true) {
+    const url = BASE + '/rest/api/3/search/jql?jql=' + encodeURIComponent(jql)
+      + '&fields=' + fields + '&maxResults=100&startAt=' + start;
+    const r = await fetch(url, { headers: { Authorization: auth(), Accept: 'application/json' } });
+    if (!r.ok) throw new Error('HTTP ' + r.status + ': ' + (await r.text()).slice(0, 150));
+    const d = await r.json();
+    issues = issues.concat(d.issues || []);
+    if (issues.length >= (d.total || 0) || !(d.issues || []).length) break;
+    start += 100;
+  }
+  return issues;
+}
+
+async function extractHtmlVar(path, varName) {
+  const text = await (await fetch(path)).text();
+  const re = new RegExp('const\\s+' + varName + '\\s*=\\s*(\\[[\\s\\S]*?\\]);\\s*\\n');
+  const m = text.match(re);
+  if (!m) throw new Error('Could not extract ' + varName + ' from ' + path);
+  return JSON.parse(m[1]);
+}
+
+// ── Rack location parser ──────────────────────────────────────────────────
+function parseRackLoc(loc) {
+  const m = loc.match(/\.R(\d+)\.RU(\d+)/i);
+  return m ? { rack: parseInt(m[1]), ru: parseInt(m[2]) } : null;
+}
+
+// ── DH1 Validation ────────────────────────────────────────────────────────
+function renderDH1(jiraIssues, computeNodes) {
+  // Build serial → node map from HTML
+  const htmlBySerial = {};
+  computeNodes.forEach(n => { htmlBySerial[n.serial.toUpperCase()] = n; });
+
+  // Build serial → tickets map from Jira
+  const rows = [];
+  const matchedSerials = new Set();
+
+  jiraIssues.forEach(iss => {
+    const serials = (iss.fields.customfield_10193 || []).map(s => s.trim().toUpperCase());
+    const locs    = (iss.fields.customfield_10207 || []).filter(l => /DH1/i.test(l));
+    const summary = iss.fields.summary || '';
+    const status  = (iss.fields.status || {}).name || '?';
+
+    if (!serials.length && !locs.length) return;
+
+    // Match each rack loc to a serial
+    locs.forEach(loc => {
+      const parsed = parseRackLoc(loc);
+      serials.forEach(serial => {
+        matchedSerials.add(serial);
+        const htmlNode = htmlBySerial[serial];
+        let result, htmlRack = '—', htmlRU = '—';
+
+        if (!htmlNode) {
+          result = { code: 'no_html', label: '⚠ Not in HTML', cls: 'b-warn' };
+        } else {
+          htmlRack = htmlNode.cab;
+          htmlRU   = htmlNode.rackU;
+          if (!parsed) {
+            result = { code: 'no_parse', label: '⚠ Unparseable loc', cls: 'b-warn' };
+          } else if (htmlNode.cab === parsed.rack && htmlNode.rackU === parsed.ru) {
+            result = { code: 'ok', label: '✓ Match', cls: 'b-ok' };
+          } else if (htmlNode.cab !== parsed.rack) {
+            result = { code: 'rack_mismatch', label: '✗ Rack mismatch', cls: 'b-err' };
+          } else {
+            result = { code: 'ru_mismatch', label: '✗ RU mismatch', cls: 'b-warn' };
+          }
+        }
+
+        rows.push({ key: iss.key, serial, loc, parsed, htmlRack, htmlRU, result, status, summary });
+      });
+    });
+
+    // Ticket has serials but no DH1 rack locs
+    if (!locs.length && serials.length) {
+      serials.forEach(serial => {
+        matchedSerials.add(serial);
+        rows.push({ key: iss.key, serial, loc: '—', parsed: null, htmlRack: '—', htmlRU: '—',
+          result: { code: 'no_loc', label: '⚠ No rack location', cls: 'b-warn' }, status, summary });
+      });
+    }
+  });
+
+  // Stats
+  const ok = rows.filter(r => r.result.code === 'ok').length;
+  const rackMis = rows.filter(r => r.result.code === 'rack_mismatch').length;
+  const ruMis   = rows.filter(r => r.result.code === 'ru_mismatch').length;
+  const noHtml  = rows.filter(r => r.result.code === 'no_html').length;
+  const noLoc   = rows.filter(r => r.result.code === 'no_loc').length;
+  const unmatchedNodes = computeNodes.filter(n => !matchedSerials.has(n.serial.toUpperCase()));
+
+  document.getElementById('dh1-stats').innerHTML = [
+    ['<span class="green">' + ok + '</span>', 'Rack matches', 'green'],
+    ['<span class="red">' + rackMis + '</span>', 'Rack mismatches', 'red'],
+    ['<span class="yellow">' + ruMis + '</span>', 'RU mismatches', 'yellow'],
+    ['<span class="yellow">' + noHtml + '</span>', 'In Jira, not HTML', 'yellow'],
+    ['<span class="gray">' + unmatchedNodes.length + '</span>', 'In HTML, no ticket', 'gray'],
+  ].map(([n, l]) => `<div class="stat"><div class="stat-num">${n}</div><div class="stat-lbl">${l}</div></div>`).join('');
+
+  // Filters
+  const allCodes = ['all', 'ok', 'rack_mismatch', 'ru_mismatch', 'no_html', 'no_loc'];
+  const codeLabels = { all: 'All', ok: '✓ Match', rack_mismatch: '✗ Rack', ru_mismatch: '✗ RU', no_html: '⚠ Not in HTML', no_loc: '⚠ No location' };
+  let activeFilter = 'all';
+  const filterDiv = document.getElementById('dh1-filters');
+  filterDiv.innerHTML = allCodes.map(c =>
+    `<button class="filter-btn ${c==='all'?'active':''}" onclick="setDH1Filter('${c}',this)">${codeLabels[c]} ${c==='all'?'('+rows.length+')':'('+rows.filter(r=>r.result.code===c).length+')'}</button>`
+  ).join('');
+
+  window.dh1Rows = rows;
+  renderDH1Table('all');
+
+  // Unmatched HTML nodes
+  if (unmatchedNodes.length) {
+    document.getElementById('dh1-unmatched-card').style.display = 'block';
+    document.getElementById('dh1-unmatched-tbody').innerHTML = unmatchedNodes.slice(0, 200).map(n =>
+      `<tr><td class="mono">${n.serial}</td><td class="mono">R${n.cab}</td><td class="mono">RU${n.rackU}</td><td>${n.row}</td></tr>`
+    ).join('');
+  }
+}
+
+function setDH1Filter(code, btn) {
+  document.querySelectorAll('#dh1-filters .filter-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  renderDH1Table(code);
+}
+
+function renderDH1Table(filter) {
+  const rows = (window.dh1Rows || []).filter(r => filter === 'all' || r.result.code === filter);
+  document.getElementById('dh1-tbody').innerHTML = rows.slice(0, 500).map(r => `
+    <tr>
+      <td><a href="${JIRA_WEB}/browse/${r.key}" target="_blank">${r.key}</a></td>
+      <td class="mono">${r.serial}</td>
+      <td class="mono" style="color:#8b949e;">${r.loc}</td>
+      <td class="mono ${r.result.code==='rack_mismatch'?'red':''}">${r.htmlRack !== '—' ? 'R'+r.htmlRack : '—'}</td>
+      <td class="mono ${r.result.code==='ru_mismatch'?'yellow':''}">${r.htmlRU !== '—' ? 'RU'+r.htmlRU : '—'}</td>
+      <td><span class="badge ${r.result.cls}">${r.result.label}</span></td>
+    </tr>`).join('');
+}
+
+// ── DH2 Validation ────────────────────────────────────────────────────────
+function renderDH2(jiraIssues, dh2Rows) {
+  const validCabs = new Set(dh2Rows.flatMap(r => r.cabinets.map(c => c.cab)));
+
+  const rows = [];
+  jiraIssues.forEach(iss => {
+    const serials  = (iss.fields.customfield_10193 || []).map(s => s.trim());
+    const tags     = (iss.fields.customfield_10192 || []).map(s => s.trim());
+    const locs     = (iss.fields.customfield_10207 || []).filter(l => /DH2/i.test(l));
+    const model    = iss.fields.customfield_10210 || '—';
+    const status   = (iss.fields.status || {}).name || '?';
+
+    locs.forEach(loc => {
+      const parsed = parseRackLoc(loc);
+      let result;
+      if (!parsed) {
+        result = { code: 'no_parse', label: '⚠ Unparseable', cls: 'b-warn' };
+      } else if (validCabs.has(parsed.rack)) {
+        result = { code: 'ok', label: '✓ Cab exists', cls: 'b-ok' };
+      } else {
+        result = { code: 'bad_cab', label: '✗ Cab not in HTML', cls: 'b-err' };
+      }
+      rows.push({ key: iss.key, serials, tags, loc, parsed, model, status, result });
+    });
+
+    if (!locs.length) {
+      rows.push({ key: iss.key, serials, tags, loc: '—', parsed: null, model, status,
+        result: { code: 'no_loc', label: '⚠ No DH2 location', cls: 'b-warn' } });
+    }
+  });
+
+  const ok      = rows.filter(r => r.result.code === 'ok').length;
+  const badCab  = rows.filter(r => r.result.code === 'bad_cab').length;
+  const noLoc   = rows.filter(r => r.result.code === 'no_loc').length;
+  const uniqueRacks = new Set(rows.filter(r => r.parsed).map(r => r.parsed.rack)).size;
+
+  document.getElementById('dh2-stats').innerHTML = [
+    ['<span class="green">' + ok + '</span>', 'Valid rack locations'],
+    ['<span class="red">' + badCab + '</span>', 'Cab not in HTML'],
+    ['<span class="yellow">' + noLoc + '</span>', 'Missing location'],
+    ['<span class="blue">' + uniqueRacks + '</span>', 'Unique racks'],
+    ['<span class="blue">' + jiraIssues.length + '</span>', 'Total tickets'],
+  ].map(([n, l]) => `<div class="stat"><div class="stat-num">${n}</div><div class="stat-lbl">${l}</div></div>`).join('');
+
+  const allCodes = ['all', 'ok', 'bad_cab', 'no_loc'];
+  const codeLabels = { all: 'All', ok: '✓ Valid', bad_cab: '✗ Bad cab', no_loc: '⚠ No location' };
+  const filterDiv = document.getElementById('dh2-filters');
+  filterDiv.innerHTML = allCodes.map(c =>
+    `<button class="filter-btn ${c==='all'?'active':''}" onclick="setDH2Filter('${c}',this)">${codeLabels[c]} (${c==='all'?rows.length:rows.filter(r=>r.result.code===c).length})</button>`
+  ).join('');
+
+  window.dh2Rows = rows;
+  renderDH2Table('all');
+}
+
+function setDH2Filter(code, btn) {
+  document.querySelectorAll('#dh2-filters .filter-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  renderDH2Table(code);
+}
+
+function renderDH2Table(filter) {
+  const rows = (window.dh2Rows || []).filter(r => filter === 'all' || r.result.code === filter);
+  document.getElementById('dh2-tbody').innerHTML = rows.slice(0, 500).map(r => `
+    <tr>
+      <td><a href="${JIRA_WEB}/browse/${r.key}" target="_blank">${r.key}</a></td>
+      <td class="mono" style="font-size:10px;">${r.serials.join('<br>') || '—'}</td>
+      <td class="mono" style="font-size:10px;color:#8b949e;">${r.tags.join('<br>') || '—'}</td>
+      <td class="mono" style="color:#8b949e;">${r.loc}</td>
+      <td class="mono">${r.parsed ? (validCabsGlobal && validCabsGlobal.has(r.parsed.rack) ? '<span class="green">✓ Cab '+r.parsed.rack+'</span>' : '<span class="red">✗ Cab '+r.parsed.rack+'</span>') : '—'}</td>
+      <td style="color:#6e7681;font-size:10px;">${r.model}</td>
+      <td><span class="badge ${r.result.cls}">${r.result.label}</span></td>
+    </tr>`).join('');
+}
+
+var validCabsGlobal;
+
+// ── Main ──────────────────────────────────────────────────────────────────
+async function runValidation() {
+  const btn = document.getElementById('run-btn');
+  btn.disabled = true; btn.textContent = 'Running…';
+  document.getElementById('results').style.display = 'none';
+
+  try {
+    setStatus('Loading HTML device data…', 'loading');
+    const [computeNodes, dh2RowsData] = await Promise.all([
+      extractHtmlVar('/VO201-dh1-albatross.html', 'COMPUTE_NODES'),
+      extractHtmlVar('/VO201-dh2-phoenix.html', 'ROWS'),
+    ]);
+    validCabsGlobal = new Set(dh2RowsData.flatMap(r => r.cabinets.map(c => c.cab)));
+
+    setStatus(`Fetching DH1 Jira tickets (SDA)…`, 'loading');
+    const dh1Issues = await jiraSearchAll(
+      'project = SDA AND cf[10194] = "ORD3" AND cf[10207] is not EMPTY AND statusCategory != "Done"',
+      'summary,status,priority,customfield_10207,customfield_10193,customfield_10192,customfield_10210'
+    );
+    const dh1Filtered = dh1Issues.filter(i => (i.fields.customfield_10207 || []).some(l => /US-VO201\.DH1/i.test(l)));
+
+    setStatus(`Fetching DH2 Jira tickets (DO)…`, 'loading');
+    const dh2Issues = await jiraSearchAll(
+      'project = "DO" AND text ~ "US-VO201" AND statusCategory != "Done"',
+      'summary,status,priority,customfield_10207,customfield_10193,customfield_10192,customfield_10210'
+    );
+    const dh2Filtered = dh2Issues.filter(i => (i.fields.customfield_10207 || []).some(l => /US-VO201\.DH2/i.test(l)));
+
+    setStatus(`✓ Loaded ${computeNodes.length} HTML nodes, ${dh1Filtered.length} SDA tickets, ${dh2Filtered.length} DO tickets`, 'ok');
+
+    renderDH1(dh1Filtered, computeNodes);
+    renderDH2(dh2Filtered, dh2RowsData);
+
+    document.getElementById('results').style.display = 'block';
+  } catch(e) {
+    setStatus('Error: ' + e.message, 'err');
+    console.error(e);
+  } finally {
+    btn.disabled = false; btn.textContent = 'Run Validation';
+  }
+}
+
+function switchTab(t) {
+  document.querySelectorAll('.stab').forEach((el, i) => el.classList.toggle('active', ['dh1','dh2'][i] === t));
+  document.querySelectorAll('.tab-content').forEach((el, i) => el.classList.toggle('active', ['dh1','dh2'][i] === t));
+}
+</script>
+</body>
+</html>

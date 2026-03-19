@@ -1,0 +1,793 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Data Hall Power Distribution - ORD3 Albatross</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, 'Segoe UI', system-ui, sans-serif; background: #f0f2f8; color: #1e2a3a; height: 100vh; overflow: hidden; display: flex; flex-direction: column; }
+
+  #header { background: #ffffff; border-bottom: 1px solid rgba(0,0,0,0.08); padding: 11px 18px; display: flex; align-items: center; gap: 16px; flex-shrink: 0; box-shadow: 0 1px 3px rgba(0,0,0,0.06); }
+  #header h1 { font-size: 15px; font-weight: 700; color: #1e2a3a; letter-spacing: -0.2px; }
+  #header .subtitle { font-size: 11px; color: #94a3b8; margin-top: 2px; }
+
+  #search-box { margin-left: auto; position: relative; }
+  #search-box input { background: #f0f2f8; border: 1px solid rgba(0,0,0,0.1); border-radius: 8px; padding: 7px 12px 7px 32px; color: #1e2a3a; font-size: 12px; width: 220px; outline: none; transition: border-color 0.15s, background 0.15s; }
+  #search-box input::placeholder { color: #b0bec5; }
+  #search-box input:focus { border-color: rgba(99,102,241,0.5); background: #fff; box-shadow: 0 0 0 3px rgba(99,102,241,0.08); }
+  #search-box .search-icon { position: absolute; left: 10px; top: 50%; transform: translateY(-50%); color: #b0bec5; font-size: 12px; }
+  #search-results { position: absolute; top: calc(100% + 6px); right: 0; width: 340px; background: #fff; border: 1px solid rgba(0,0,0,0.1); border-radius: 10px; box-shadow: 0 10px 30px rgba(0,0,0,0.12); z-index: 100; max-height: 300px; overflow-y: auto; display: none; }
+  #search-results .sr-item { padding: 9px 14px; cursor: pointer; border-bottom: 1px solid rgba(0,0,0,0.05); font-size: 12px; transition: background 0.1s; }
+  #search-results .sr-item:last-child { border-bottom: none; }
+  #search-results .sr-item:hover { background: #f8fafc; }
+  #search-results .sr-item .sr-serial { color: #6366f1; font-weight: 600; font-family: 'SF Mono', Consolas, monospace; }
+  #search-results .sr-item .sr-detail { color: #94a3b8; font-size: 10px; margin-top: 1px; }
+
+  #legend { background: #fff; border-bottom: 1px solid rgba(0,0,0,0.06); padding: 6px 18px; display: flex; align-items: center; gap: 14px; flex-shrink: 0; font-size: 11px; flex-wrap: wrap; }
+  #legend .leg-title { color: #94a3b8; font-weight: 700; font-size: 9px; text-transform: uppercase; letter-spacing: 0.8px; }
+  .leg-item { display: flex; align-items: center; gap: 5px; color: #64748b; }
+  .leg-item.clickable { cursor: pointer; padding: 3px 7px; border-radius: 5px; border: 1px solid transparent; transition: all 0.12s; }
+  .leg-item.clickable:hover { background: rgba(0,0,0,0.05); border-color: rgba(0,0,0,0.08); }
+  .leg-item.feed-active { background: rgba(99,102,241,0.1); border-color: rgba(99,102,241,0.3) !important; font-weight: 700; }
+  .leg-dot { width: 10px; height: 10px; border-radius: 3px; }
+
+  #main { display: flex; flex: 1; overflow: hidden; }
+
+  #rpp-panel { width: 234px; background: #fff; border-right: 1px solid rgba(0,0,0,0.07); display: flex; flex-direction: column; flex-shrink: 0; }
+  #rpp-panel h2 { padding: 11px 14px; font-size: 10px; font-weight: 700; color: #94a3b8; text-transform: uppercase; letter-spacing: 1px; border-bottom: 1px solid rgba(0,0,0,0.06); }
+  #rpp-list { flex: 1; overflow-y: auto; padding: 5px; }
+  .rpp-group-header { padding: 8px 8px 4px; font-size: 9px; font-weight: 700; color: #cbd5e1; text-transform: uppercase; letter-spacing: 1px; }
+  .rpp-item { display: flex; align-items: center; padding: 5px 8px; cursor: pointer; border-radius: 6px; margin: 1px 0; transition: all 0.12s; border: 1px solid transparent; }
+  .rpp-item:hover { background: #f0f2f8; }
+  .rpp-item.selected { background: #ede9fe; border-color: rgba(99,102,241,0.25); }
+  .rpp-dot { width: 7px; height: 7px; border-radius: 2px; margin-right: 8px; flex-shrink: 0; }
+  .rpp-name { font-size: 11px; font-weight: 600; flex: 1; color: #334155; }
+  .rpp-phase { font-size: 9px; margin-right: 5px; color: #94a3b8; font-weight: 600; }
+  .rpp-count { font-size: 9px; background: #f1f5f9; padding: 1px 6px; border-radius: 8px; color: #94a3b8; }
+
+  #floor-area { flex: 1; overflow: auto; padding: 11px 14px; }
+  #floor-plan { display: flex; gap: 14px; min-width: fit-content; }
+  .floor-side { display: flex; flex-direction: column; gap: 1px; }
+  .floor-row { display: flex; align-items: center; gap: 1px; }
+  .row-label { width: 22px; font-size: 9px; color: #cbd5e1; text-align: right; padding-right: 3px; flex-shrink: 0; }
+
+  .cabinet { width: 36px; height: 28px; border-radius: 4px; border: 1px solid rgba(0,0,0,0.08); display: flex; flex-direction: column; justify-content: center; align-items: center; position: relative; transition: all 0.12s; }
+  .cabinet.clickable { cursor: pointer; }
+  .cabinet.clickable:hover { border-color: rgba(0,0,0,0.2); z-index: 10; transform: scale(1.07); box-shadow: 0 2px 8px rgba(0,0,0,0.12); }
+  .cabinet.selected { border-color: #6366f1 !important; border-width: 1.5px; z-index: 10; box-shadow: 0 0 0 2px rgba(99,102,241,0.2); }
+  .cabinet.highlighted { border-color: #f59e0b !important; border-width: 1.5px; z-index: 5; box-shadow: 0 0 0 2px rgba(245,158,11,0.15); }
+  .cabinet.dimmed { opacity: 0.2; }
+  .cab-strips { display: flex; flex-direction: column; gap: 1px; width: 100%; height: 100%; padding: 2px; }
+  .cab-strip { flex: 1; border-radius: 1px; opacity: 0.9; }
+  .cab-label { position: absolute; bottom: 1px; font-size: 6px; color: rgba(0,0,0,0.3); }
+  .cabinet.special { background: #e8edf5; }
+  .cabinet.net-cab { background: #e0eaf5; }
+  .cabinet.infra-cab { background: #e4eaf5; }
+  .cab-type { font-size: 6px; color: rgba(0,0,0,0.25); text-align: center; line-height: 1.2; padding: 1px; }
+  .aisle-col { width: 20px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+  .aisle-label { writing-mode: vertical-lr; font-size: 8px; color: #dde3f0; letter-spacing: 1px; font-weight: 700; }
+
+  #detail-panel { width: 295px; background: #fff; border-left: 1px solid rgba(0,0,0,0.07); display: flex; flex-direction: column; flex-shrink: 0; }
+  #detail-panel h2 { padding: 11px 14px; font-size: 10px; font-weight: 700; color: #94a3b8; border-bottom: 1px solid rgba(0,0,0,0.06); display: flex; align-items: center; justify-content: space-between; text-transform: uppercase; letter-spacing: 0.8px; }
+  #detail-panel h2 button { font-size: 11px; background: #f1f5f9; border: 1px solid rgba(0,0,0,0.08); color: #94a3b8; cursor: pointer; padding: 3px 8px; border-radius: 5px; transition: all 0.12s; font-family: inherit; }
+  #detail-panel h2 button:hover { background: #e8edf5; color: #64748b; }
+  #detail-content { flex: 1; overflow-y: auto; padding: 12px; }
+  .detail-empty { color: #cbd5e1; font-size: 13px; text-align: center; margin-top: 50px; line-height: 2.2; }
+  .detail-section { margin-bottom: 16px; }
+  .detail-section h3 { font-size: 9px; font-weight: 700; color: #cbd5e1; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 8px; padding-bottom: 5px; border-bottom: 1px solid rgba(0,0,0,0.06); }
+  .impact-box { background: #faf5ff; border: 1px solid #e9d5ff; border-radius: 8px; padding: 12px; margin-bottom: 10px; }
+  .impact-count { font-size: 28px; font-weight: 800; color: #9333ea; letter-spacing: -1px; line-height: 1; }
+  .impact-label { font-size: 11px; color: #a855f7; margin-bottom: 3px; }
+  .impact-warning { font-size: 10px; color: #9333ea; margin-top: 6px; opacity: 0.75; }
+  .net-impact-box { background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 8px; padding: 12px; margin-bottom: 10px; }
+  .net-impact-count { font-size: 22px; font-weight: 800; color: #2563eb; letter-spacing: -1px; line-height: 1; }
+  .net-impact-label { font-size: 11px; color: #3b82f6; margin-bottom: 3px; }
+  .info-row { display: flex; justify-content: space-between; align-items: center; padding: 5px 0; font-size: 11px; border-bottom: 1px solid rgba(0,0,0,0.04); }
+  .info-row:last-child { border-bottom: none; }
+  .info-row .lbl { color: #94a3b8; }
+  .info-row .val { color: #334155; font-weight: 600; }
+  .server-list { max-height: 260px; overflow-y: auto; }
+  .server-item { display: flex; align-items: flex-start; padding: 5px 8px; border-radius: 6px; margin-bottom: 2px; background: #f8fafc; font-size: 10px; cursor: pointer; transition: background 0.1s; border: 1px solid transparent; }
+  .server-item:hover { background: #f0f2f8; border-color: rgba(0,0,0,0.06); }
+  .srv-phase-dot { width: 5px; height: 5px; border-radius: 1px; margin-right: 6px; margin-top: 2px; flex-shrink: 0; }
+  .srv-serial { color: #6366f1; font-family: 'SF Mono', Consolas, monospace; font-size: 10px; }
+  .srv-loc { color: #94a3b8; font-size: 9px; }
+  .srv-note { color: #d97706; font-size: 9px; }
+  .net-item { padding: 5px 8px; border-radius: 6px; margin-bottom: 2px; background: #f8fafc; font-size: 10px; cursor: pointer; border: 1px solid transparent; transition: background 0.1s; }
+  .net-item:hover { background: #f0f2f8; border-color: rgba(0,0,0,0.06); }
+  .net-serial { color: #0284c7; font-family: 'SF Mono', Consolas, monospace; font-size: 10px; }
+  .net-loc { color: #94a3b8; font-size: 9px; }
+  .cab-server-card { background: #f8fafc; border-radius: 8px; padding: 9px 11px; margin-bottom: 6px; border: 1px solid rgba(0,0,0,0.06); }
+  .pdu-label { font-size: 9px; color: #94a3b8; margin-bottom: 4px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; }
+  .srv-serial-big { font-size: 11px; font-family: 'SF Mono', Consolas, monospace; color: #334155; margin-bottom: 4px; word-break: break-all; }
+  .rpp-big { font-size: 12px; font-weight: 700; }
+  .scrollbar-thin::-webkit-scrollbar { width: 4px; }
+  .scrollbar-thin::-webkit-scrollbar-track { background: transparent; }
+  .scrollbar-thin::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.1); border-radius: 2px; }
+  #stats-bar { background: #f0f2f8; border-top: 1px solid rgba(0,0,0,0.06); padding: 5px 18px; display: flex; gap: 20px; font-size: 10px; color: #b0bec5; flex-shrink: 0; flex-wrap: wrap; }
+  #stats-bar span { color: #64748b; font-weight: 600; }
+  .pod-div { font-size: 8px; font-weight: 700; color: #dde3f0; padding: 2px 4px; margin-top: 4px; letter-spacing: 0.5px; border-left: 2px solid #dde3f0; padding-left: 5px; }
+  ::-webkit-scrollbar { width: 5px; height: 5px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.1); border-radius: 3px; }
+
+  /* Export modal */
+  #export-modal { display:none; position:fixed; inset:0; background:rgba(0,0,0,0.45); z-index:999; align-items:center; justify-content:center; }
+  #export-modal.open { display:flex; }
+  #export-box { background:#fff; border-radius:12px; width:480px; max-width:92vw; box-shadow:0 20px 60px rgba(0,0,0,0.25); display:flex; flex-direction:column; max-height:80vh; }
+  #export-box .ex-head { padding:14px 16px; border-bottom:1px solid rgba(0,0,0,0.07); display:flex; align-items:center; justify-content:space-between; }
+  #export-box .ex-title { font-size:13px; font-weight:700; color:#1e2a3a; }
+  #export-box .ex-count { font-size:11px; color:#94a3b8; margin-top:2px; }
+  #export-box .ex-close { background:#f1f5f9; border:1px solid rgba(0,0,0,0.08); color:#94a3b8; cursor:pointer; padding:4px 9px; border-radius:5px; font-size:12px; font-family:inherit; }
+  #export-box .ex-close:hover { background:#e8edf5; color:#334155; }
+  #export-box textarea { flex:1; margin:12px; border:1px solid rgba(0,0,0,0.1); border-radius:8px; padding:10px; font-family:'SF Mono',Consolas,monospace; font-size:11px; color:#334155; background:#f8fafc; resize:none; outline:none; min-height:180px; max-height:40vh; }
+  #export-box .ex-actions { padding:10px 12px 14px; display:flex; gap:8px; }
+  #export-box .ex-btn { flex:1; padding:8px; border-radius:7px; border:none; cursor:pointer; font-size:12px; font-weight:600; font-family:inherit; transition:all 0.12s; }
+  .ex-btn-copy { background:#6366f1; color:#fff; }
+  .ex-btn-copy:hover { background:#4f51d6; }
+  .ex-btn-copy.copied { background:#22c55e; }
+  .ex-btn-dl { background:#f1f5f9; color:#334155; border:1px solid rgba(0,0,0,0.1) !important; }
+  .ex-btn-dl:hover { background:#e8edf5; }
+  #detail-panel h2 .ex-open-btn { font-size:11px; background:#ede9fe; border:1px solid rgba(99,102,241,0.25); color:#6366f1; cursor:pointer; padding:3px 8px; border-radius:5px; transition:all 0.12s; font-family:inherit; }
+  #detail-panel h2 .ex-open-btn:hover { background:#ddd6fe; }
+</style>
+</head>
+<body>
+<div id="header">
+  <div>
+    <h1>DH1 (Albatross)</h1>
+    <div class="subtitle">Click any RPP, cabinet, or network device to see power impact &bull; 832 compute nodes &bull; 980 network devices &bull; 104 RPPs</div>
+  </div>
+  <div id="search-box">
+    <span class="search-icon">&#128269;</span>
+    <input type="text" id="search-input" placeholder="Search serial number..." autocomplete="off">
+    <div id="search-results" class="scrollbar-thin"></div>
+  </div>
+</div>
+<div id="legend">
+  <span class="leg-title">COMPUTE FEED:</span>
+  <div class="leg-item clickable" data-phase="2A" onclick="selectFeed('2A')" title="Click to highlight all Feed 2A cabinets"><div class="leg-dot" style="background:#F44336"></div> 2A</div>
+  <div class="leg-item clickable" data-phase="2B" onclick="selectFeed('2B')" title="Click to highlight all Feed 2B cabinets"><div class="leg-dot" style="background:#2196F3"></div> 2B</div>
+  <div class="leg-item clickable" data-phase="1A" onclick="selectFeed('1A')" title="Click to highlight all Feed 1A cabinets"><div class="leg-dot" style="background:#FF9800"></div> 1A</div>
+  <div class="leg-item clickable" data-phase="1B" onclick="selectFeed('1B')" title="Click to highlight all Feed 1B cabinets"><div class="leg-dot" style="background:#4CAF50"></div> 1B</div>
+  <span class="leg-title" style="margin-left:8px;">NETWORK:</span>
+  <div class="leg-item"><div class="leg-dot" style="background:#00BCD4"></div> EOR/Switch</div>
+  <div class="leg-item"><div class="leg-dot" style="background:#FF5722"></div> IB/FCR Infra</div>
+  <div class="leg-item"><div class="leg-dot" style="background:#607D8B"></div> Empty/Utility</div>
+</div>
+<div id="main">
+  <div id="rpp-panel">
+    <h2>&#9889; RPP Panels</h2>
+    <div id="rpp-list" class="scrollbar-thin"></div>
+  </div>
+  <div id="floor-area">
+    <div id="floor-plan"></div>
+  </div>
+  <div id="detail-panel">
+    <h2>Details <div style="display:flex;gap:6px;"><button class="ex-open-btn" onclick="showExportModal()">&#8595; Export</button><button onclick="clearSelection()">&#10005;</button></div></h2>
+    <div id="detail-content" class="scrollbar-thin">
+      <div class="detail-empty">&#9889; Click an RPP, cabinet,<br>or network device to see<br>power impact details</div>
+    </div>
+  </div>
+</div>
+<div id="stats-bar">
+  <div>Compute Nodes: <span>832</span></div>
+  <div>Network Devices: <span>980</span></div>
+  <div>RPPs: <span>104</span></div>
+  <div>Rows: <span>56</span></div>
+  <div>Grid-A: <span>Rows 1–28</span></div>
+  <div>Infra: <span>Rows 39–42</span></div>
+  <div>Grid-B: <span>Rows 43–56</span></div>
+  <div id="sel-stat" style="margin-left:auto;color:#7a7f9a;"></div>
+</div>
+
+<script>
+const _cn=[["AS01-2","2A","S892297X3B02586",1,2,12,""],["BQ37-2","1B","S892297X3B19488",1,2,26,""],["AS01-2","2A","S892297X3C01007",1,3,12,""],["AT37-2","2B","S892297X3B02587",1,3,26,""],["AT37-2","2B","S892297X3B02569",1,4,12,""],["BW01-2","1A","S892297X3A43109",1,4,26,""],["AT37-2","2B","S892297X3B02580",1,5,12,""],["AS01-2","2A","S892297X3A08910",1,5,26,""],["AT37-2","2B","S892297X3B19391",1,6,12,""],["BQ37-2","1B","S892297X3B02585",1,6,26,""],["AS01-2","2A","S892297X3C00970",1,7,12,""],["BW01-2","1A","S892297X3C01017",1,7,26,""],["AS01-2","2A","S892297X3C01822",1,8,12,""],["AT37-2","2B","S892297X3B19476",1,8,26,""],["AT37-2","2B","S892297X3B19446",1,9,12,""],["BW01-2","1A","S892297X3A43112",1,9,26,""],["AS01-2","2A","S892297X3B19395",2,12,12,""],["BQ37-2","1B","S892297X3B19394",2,12,26,""],["BQ37-2","1B","S892297X3B03226",2,13,12,""],["BW01-2","1A","S892297X3B12194",2,13,26,""],["AS01-2","2A","S892297X3C00996",2,14,12,""],["BW01-2","1A","S892297X3B05644",2,14,26,""],["AT37-2","2B","S892297X3C01845",2,15,12,""],["BQ37-2","1B","S892297X3B02583",2,15,26,""],["AS01-2","2A","S892297X3B18685",2,16,12,""],["BQ37-2","1B","S892297X3B02527",2,16,26,""],["BW01-2","1A","S892297X3B02570",2,17,12,""],["AS01-2","2A","S892297X3C00999",2,17,26,""],["AT37-2","2B","S892297X3C01802",2,18,12,""],["BW01-2","1A","S892297X3C01006",2,18,26,""],["BQ37-2","1B","S892297X3C01009",2,19,12,""],["BW01-2","1A","S892297X3B06882",2,19,26,""],["AS01-1","2A","S892297X3C00995",3,22,12,""],["BQ37-1","1B","S892297X3B09351",3,22,26,""],["AS01-1","2A","S892297X3B19474",3,23,12,""],["AT37-1","2B","S892297X3B19473",3,23,26,""],["AT37-1","2B","S892297X3C01843",3,24,12,""],["BW01-1","1A","S892297X3B19447",3,24,26,""],["AT37-1","2B","S892297X3B19470",3,25,12,""],["AS01-1","2A","S892297X3B02577",3,25,26,""],["AT37-1","2B","S892297X3B02588",3,26,12,""],["BQ37-1","1B","S892297X3B19494",3,26,26,""],["AS01-1","2A","S892297X3B18713",3,27,12,""],["BW01-1","1A","S892297X3B19398",3,27,26,""],["AS01-1","2A","S892297X3B03228",3,28,12,""],["AT37-1","2B","S892297X3C01844",3,28,26,""],["AT37-1","2B","S892297X3B02573",3,29,12,""],["BW01-1","1A","S892297X3B19472",3,29,26,""],["AS01-1","2A","S892297X3B03236",4,32,12,""],["BQ37-1","1B","S892297X3C01809",4,32,26,""],["BQ37-1","1B","S892297X3B19449",4,33,12,""],["BW01-1","1A","S892297X3B06864",4,33,26,""],["AS01-1","2A","S892297X3C01811",4,34,12,""],["BW01-1","1A","S892297X3C00983",4,34,26,""],["AT37-1","2B","S892297X3C01842",4,35,12,""],["BQ37-1","1B","S892297X3C01810",4,35,26,""],["AS01-1","2A","S892297X3B02576",4,36,12,""],["BQ37-1","1B","S892297X3B18688",4,36,26,""],["BW01-1","1A","S892297X3B18722",4,37,12,""],["BQ37-1","1B","S892297X3B19471",4,37,26,""],["AT37-1","2B","S892297X3B19490",4,38,12,""],["BW01-1","1A","S892297X3C00985",4,38,26,""],["BQ37-1","1B","S892297X3B19469",4,39,12,"Node has 2 PDU's fail in tkt: SDA-30618"],["BW01-1","1A","S892297X3C01816",4,39,26,""],["AZ01-2","2A","S892297X3B06857",5,42,12,""],["BX37-2","1B","S892297X3C01824",5,42,26,""],["AZ01-2","2A","S892297X3B02572",5,43,12,""],["BA37-2","2B","S892297X3C01841",5,43,26,""],["BA37-2","2B","S892297X3B06860",5,44,12,""],["CD01-2","1A","S892297X3B19475",5,44,26,""],["BA37-2","2B","S892297X3C00984",5,45,12,""],["AZ01-2","2A","S892297X3C00975",5,45,26,""],["BA37-2","2B","S892297X3C01804",5,46,12,""],["BX37-2","1B","S892297X3B19484",5,46,26,""],["AZ01-2","2A","S892297X3C01818",5,47,12,""],["CD01-2","1A","S892297X3B19478",5,47,26,""],["AZ01-2","2A","S892297X3B02514",5,48,12,""],["BA37-2","2B","S892297X3B18712",5,48,26,""],["BA37-2","2B","S892297X3C01798",5,49,12,""],["CD01-2","1A","S892297X3B03235",5,49,26,""],["AZ01-2","2A","S892297X3B19489",6,52,12,""],["BX37-2","1B","S892297X3B18699",6,52,26,""],["BX37-2","1B","S892297X3C00968",6,53,12,""],["CD01-2","1A","S892297X3B06861",6,53,26,""],["AZ01-2","2A","S892297X3A43115",6,54,12,""],["CD01-2","1A","S892297X3B02581",6,54,26,""],["BA37-2","2B","S892297X3B19402",6,55,12,""],["BX37-2","1B","S892297X3C01836",6,55,26,""],["AZ01-2","2A","S892297X3C14870",6,56,12,""],["BX37-2","1B","S892297X3C16064",6,56,26,""],["CD01-2","1A","S892297X3B02578",6,57,12,""],["BX37-2","1B","S892297X3B02575",6,57,26,""],["BA37-2","2B","S892297X3C01838",6,58,12,""],["CD01-2","1A","S892297X3C01807",6,58,26,""],["BX37-2","1B","S892297X3C00991",6,59,12,""],["CD01-2","1A","S892297X3C00989",6,59,26,""],["AZ01-1","2A","S892297X3C14907",7,62,12,""],["BX37-1","1B","S892297X3C15382",7,62,26,""],["AZ01-1","2A","S892297X3C00993",7,63,12,""],["BA37-1","2B","S892297X3B18711",7,63,26,""],["BA37-1","2B","S892297X3C16075",7,64,12,""],["CD01-1","1A","S892297X3C14913",7,64,26,""],["BA37-1","2B","S892297X3C16520",7,65,12,""],["AZ01-1","2A","S892297X3C14112",7,65,26,""],["BA37-1","2B","S892297X3C00979",7,66,12,""],["BX37-1","1B","S892297X3B18686",7,66,26,""],["AZ01-1","2A","S892297X3B19481",7,67,12,""],["CD01-1","1A","S892297X3B18702",7,67,26,""],["AZ01-1","2A","S892297X3B06862",7,68,12,""],["BA37-1","2B","S892297X3C01826",7,68,26,""],["BA37-1","2B","S892297X3C01821",7,69,12,""],["CD01-1","1A","S892297X3C00990",7,69,26,""],["AZ01-1","2A","S892297X3C14906",8,72,12,""],["BX37-1","1B","S892297X3C14110",8,72,26,""],["BX37-1","1B","S892297X3C14116",8,73,12,""],["CD01-1","1A","S892297X3C15344",8,73,26,""],["AZ01-1","2A","S892297X3C16034",8,74,12,""],["CD01-1","1A","S892297X3C16342",8,74,26,""],["BA37-1","2B","S892297X4103866",8,75,12,""],["BX37-1","1B","S892297X3C18212",8,75,26,""],["AZ01-1","2A","S892297X4105722",8,76,12,""],["BX37-1","1B","S892297X3C01812",8,76,26,""],["CD01-1","1A","S892297X3C16323",8,77,12,""],["BX37-1","1B","S892297X4103862",8,77,26,""],["BA37-1","2B","S892297X3C16517",8,78,12,""],["CD01-1","1A","S892297X3C14487",8,78,26,""],["BX37-1","1B","S892297X3C16530",8,79,12,""],["CD01-1","1A","S892297X3C16533",8,79,26,""],["BP01-2","2A","S892297X3C09232",9,82,12,""],["CE37-2","1B","S892297X4105719",9,82,26,""],["BP01-2","2A","S892297X4105739",9,83,12,""],["BH37-2","2B","S892297X4103829",9,83,26,""],["BH37-2","2B","S892297X4105702",9,84,12,""],["CH01-2","1A","S892297X4103825",9,84,26,""],["BH37-2","2B","S892297X4105733",9,85,12,""],["BP01-2","2A","S892297X3C18192",9,85,26,""],["BH37-2","2B","S892297X3C16521",9,86,12,""],["CE37-2","1B","S892297X4105731",9,86,26,""],["BP01-2","2A","S892297X3C16304",9,87,12,""],["CH01-2","1A","S892297X4105700",9,87,26,""],["BP01-2","2A","S892297X3C15372",9,88,12,""],["BH37-2","2B","S892297X3A38039",9,88,26,""],["BH37-2","2B","S892297X3C14871",9,89,12,""],["CH01-2","1A","S892297X3C15353",9,89,26,""],["BP01-2","2A","S892297X3C14075",10,92,12,""],["CE37-2","1B","S892297X4105742",10,92,26,""],["CE37-2","1B","S892297X3C15341",10,93,12,""],["CH01-2","1A","S892297X4105741",10,93,26,""],["BP01-2","2A","S892297X3C15349",10,94,12,""],["CH01-2","1A","S892297X4105744",10,94,26,""],["BH37-2","2B","S892297X4103819",10,95,12,""],["CE37-2","1B","S892297X3C01825",10,95,26,""],["BP01-2","2A","S892297X3C15343",10,96,12,""],["CE37-2","1B","S892297X3C00974",10,96,26,""],["CH01-2","1A","S892297X3C18193",10,97,12,""],["CE37-2","1B","S892297X3B19455",10,97,26,""],["BH37-2","2B","S892297X3B19483",10,98,12,""],["CH01-2","1A","S892297X4105730",10,98,26,""],["CE37-2","1B","S892297X3B19445",10,99,12,""],["CH01-2","1A","S892297X3C12848",10,99,26,""],["BP01-1","2A","S892297X3C16062",11,102,12,""],["CE37-1","1B","S892297X3A38040",11,102,26,""],["BP01-1","2A","S892297X3C18176",11,103,12,""],["BH37-1","2B","S892297X3C16058",11,103,26,""],["BH37-1","2B","S892297X3C16648",11,104,12,""],["CH01-1","1A","S892297X3C16608",11,104,26,""],["BH37-1","2B","S892297X3C17603",11,105,12,""],["BP01-1","2A","S892297X3C17615",11,105,26,""],["BH37-1","","S892297X3C16625",11,106,12,""],["CE37-1","1B","S892297X3C16649",11,106,26,""],["BP01-1","2A","S892297X3C16623",11,107,12,""],["CH01-1","1A","S892297X3C16607",11,107,26,""],["BP01-1","2A","S892297X3C16612",11,108,12,""],["BH37-1","2B","S892297X3C16644",11,108,26,""],["BH37-1","2B","S892297X3C17604",11,109,12,""],["CH01-1","1A","S892297X3C09203",11,109,26,""],["BP01-1","2A","S892297X3C17611",12,112,12,""],["CE37-1","1B","S892297X4101554",12,112,26,""],["CE37-1","1B","S892297X3C17616",12,113,12,""],["CH01-1","1A","S892297X3C18219",12,113,26,""],["BP01-1","2A","S892297X3C16066",12,114,12,""],["CH01-1","1A","S892297X3C14482",12,114,26,""],["BH37-1","2B","S892297X3C16650",12,115,12,""],["CE37-1","1B","S892297X3C16065",12,115,26,""],["BP01-1","","S892297X3C16330",12,116,12,""],["CE37-1","1B","S892297X3C11797",12,116,26,""],["CH01-1","1A","S892297X4105749",12,117,12,""],["CE37-1","1B","S892297X4101560",12,117,26,""],["BH37-1","2B","S892297X3C16647",12,118,12,""],["CH01-1","1A","S892297X3C16071",12,118,26,""],["CE37-1","1B","S892297X4101541",12,119,12,""],["CH01-1","1A","S892297X3C18202",12,119,26,""],["DL01-2","2A","S892297X4101561",13,122,12,""],["DR37-2","1B","S892297X3C16621",13,122,26,""],["DL01-2","2A","S892297X3C14090",13,123,12,""],["DY37-2","2B","S892297X3C17599",13,123,26,""],["DY37-2","2B","S892297X3C15354",13,124,12,""],["DG01-2","1A","S892297X4101548",13,124,26,""],["DY37-2","2B","S892297X3C18201",13,125,12,""],["DL01-2","2A","S892297X3C16350",13,125,26,""],["DY37-2","2B","S892297X3C16629",13,126,12,""],["DR37-2","1B","S892297X3C14091",13,126,26,""],["DL01-2","2A","S892297X3C16041",13,127,12,""],["DG01-2","1A","S892297X3C16523",13,127,26,""],["DL01-2","2A","S892297X3C16615",13,128,12,""],["DY37-2","2B","S892297X3C16613",13,128,26,""],["DY37-2","2B","S892297X4105747",13,129,12,""],["DG01-2","1A","S892297X3C16611",13,129,26,""],["DL01-2","2A","S892297X3C16631",14,132,12,""],["DR37-2","1B","S892297X3C16654",14,132,26,""],["DR37-2","1B","S892297X4101553",14,133,12,""],["DG01-2","1A","S892297X3C18209",14,133,26,""],["DL01-2","2A","S892297X3C04032",14,134,12,""],["DG01-2","1A","S892297X3C15371",14,134,26,""],["DY37-2","2B","S892297X3C17596",14,135,12,""],["DR37-2","1B","S892297X3C18223",14,135,26,""],["DL01-2","2A","S892297X3C16340",14,136,12,""],["DR37-2","1B","S892297X4101556",14,136,26,""],["DG01-2","1A","S892297X3C17609",14,137,12,""],["DR37-2","1B","S892297X4101551",14,137,26,""],["DY37-2","2B","S892297X4105745",14,138,12,""],["DG01-2","1A","S892297X3C14873",14,138,26,""],["DR37-2","1B","S892297X3C17593",14,139,12,""],["DG01-2","1A","S892297X3C16336",14,139,26,""],["DL01-1","2A","S892297X3C01489",15,142,12,""],["DR37-1","1B","S892297X3C16046",15,142,26,""],["DL01-1","2A","S892297X3C16525",15,143,12,""],["DY37-1","2B","S892297X3C16626",15,143,26,""],["DY37-1","2B","S892297X3C16653",15,144,12,""],["DG01-1","1A","S892297X3C16637",15,144,26,""],["DY37-1","2B","S892297X3C16610",15,145,12,""],["DL01-1","2A","S892297X3C16617",15,145,26,""],["DY37-1","2B","S892297X3C17573",15,146,12,""],["DR37-1","1B","S892297X3B19400",15,146,26,""],["DL01-1","2A","S892297X3B19384",15,147,12,""],["DG01-1","1A","S892297X3C16042",15,147,26,""],["DL01-1","2A","S892297X3C16534",15,148,12,""],["DY37-1","2B","S892297X3C16528",15,148,26,""],["DY37-1","2B","S892297X3C14511",15,149,12,""],["DG01-1","1A","S892297X3C16532",15,149,26,""],["DL01-1","2A","S892297X3C16624",16,152,12,""],["DR37-1","1B","S892297X3C16628",16,152,26,""],["DR37-1","1B","S892297X3C16620",16,153,12,""],["DG01-1","1A","S892297X3C16627",16,153,26,""],["DL01-1","2A","S892297X3C16622",16,154,12,""],["DG01-1","1A","S892297X3C14530",16,154,26,""],["DY37-1","2B","S892297X3C16522",16,155,12,""],["DR37-1","1B","S892297X3C16518",16,155,26,""],["DL01-1","2A","S892297X3C16636",16,156,12,""],["DR37-1","1B","S892297X3C16609",16,156,26,""],["DG01-1","1A","S892297X3C16033",16,157,12,""],["DR37-1","1B","S892297X3C16618",16,157,26,""],["DY37-1","2B","S892297X3C16616",16,158,12,""],["DG01-1","1A","S892297X3C16642",16,158,26,""],["DR37-1","1B","S892297X3C16645",16,159,12,""],["DG01-1","1A","S892297X3C16619",16,159,26,""],["DG37-2","2A","S892297X3C18204",17,162,12,""],["EV37-2","1B","S892297X4103861",17,162,26,""],["DG37-2","2A","S892297X4105714",17,163,12,""],["EF37-2","2B","S892297X4103827",17,163,26,""],["EF37-2","2B","S892297X3C18190",17,164,12,""],["EP01-2","1A","S892297X4103821",17,164,26,""],["EF37-2","2B","S892297X3C16535",17,165,12,""],["DG37-2","2A","S892297X3C16614",17,165,26,""],["EF37-2","2B","S892297X3C16632",17,166,12,""],["EV37-2","1B","S892297X3C16634",17,166,26,""],["DG37-2","2A","S892297X3C16527",17,167,12,""],["EP01-2","1A","S892297X3C16635",17,167,26,""],["DG37-2","2A","S892297X3B19393",17,168,12,""],["EF37-2","2B","S892297X3C16639",17,168,26,""],["EF37-2","2B","S892297X3C14495",17,169,12,""],["EP01-2","1A","S892297X3C16529",17,169,26,""],["DG37-2","2A","S892297X4105748",18,172,12,""],["EV37-2","1B","S892297X3C16651",18,172,26,""],["EV37-2","1B","S892297X3C16656",18,173,12,""],["EP01-2","1A","S892297X3C16640",18,173,26,""],["DG37-2","2A","S892297X3C16633",18,174,12,""],["EP01-2","1A","S892297X3C16655",18,174,26,""],["EF37-2","2B","S892297X3C16643",18,175,12,""],["EV37-2","1B","S892297X3C18175",18,175,26,""],["DG37-2","2A","S892297X4103833",18,176,12,""],["EV37-2","1B","S892297X3C15370",18,176,26,""],["EP01-2","1A","S892297X3C16303",18,177,12,""],["EV37-2","1B","S892297X4105737",18,177,26,""],["EF37-2","2B","S892297X4101547",18,178,12,""],["EP01-2","1A","S892297X3C15365",18,178,26,""],["EV37-2","1B","S892297X3C01840",18,179,12,""],["EP01-2","1A","S892297X3C18218",18,179,26,""],["DG37-1","2A","S892297X3A38034",19,182,12,""],["EV37-1","1B","S892297X3C18195",19,182,26,""],["DG37-1","2A","S892297X3C18199",19,183,12,""],["EF37-1","2B","S892297X4103826",19,183,26,""],["EF37-1","2B","S892297X3A38019",19,184,12,""],["EP01-1","1A","S892297X3C18203",19,184,26,""],["EF37-1","2B","S892297X3C17587",19,185,12,""],["DG37-1","2A","S892297X3A38033",19,185,26,""],["EF37-1","2B","S892297X3C18188",19,186,12,""],["EV37-1","1B","S892297X3C18178",19,186,26,""],["DG37-1","2A","S892297X3C18214",19,187,12,""],["EP01-1","1A","S892297X3C16312",19,187,26,""],["DG37-1","2A","S892297X3C16349",19,188,12,""],["EF37-1","2B","S892297X3C16319",19,188,26,""],["EF37-1","2B","S892297X3C18215",19,189,12,""],["EP01-1","1A","S892297X3A38035",19,189,26,""],["DG37-1","2A","S892297X3C18182",20,192,12,""],["EV37-1","1B","S892297X3C17588",20,192,26,""],["EV37-1","1B","S892297X3C17614",20,193,12,""],["EP01-1","1A","S892297X3C17601",20,193,26,""],["DG37-1","2A","S892297X3C11760",20,194,12,""],["EP01-1","1A","S892297X3C12877",20,194,26,""],["EF37-1","2B","S892297X3C17582",20,195,12,""],["EV37-1","1B","S892297X3C16339",20,195,26,""],["DG37-1","2A","S892297X3C15379",20,196,12,""],["EV37-1","1B","S892297X4105720",20,196,26,""],["EP01-1","1A","S892297X3C18181",20,197,12,""],["EV37-1","1B","S892297X3C17570",20,197,26,""],["EF37-1","2B","S892297X4105710",20,198,12,""],["EP01-1","1A","S892297X4105709",20,198,26,""],["EV37-1","1B","S892297X4103859",20,199,12,""],["EP01-1","1A","S892297X4105712",20,199,26,""],["DZ01-2","2A","S892297X3C18179",21,202,12,""],["FC37-2","1B","S892297X3C18196",21,202,26,""],["DZ01-2","2A","S892297X3C18180",21,203,12,""],["EN37-2","2B","S892297X3B06877",21,203,26,""],["EN37-2","2B","S892297X3C15378",21,204,12,""],["EW01-2","1A","S892297X4103832",21,204,26,""],["EN37-2","2B","S892297X3C12857",21,205,12,""],["DZ01-2","2A","S892297X3C18206",21,205,26,""],["EN37-2","2B","S892297X4103847",21,206,12,""],["FC37-2","1B","S892297X3C14894",21,206,26,""],["DZ01-2","2A","S892297X3C14879",21,207,12,""],["EW01-2","1A","S892297X3C15340",21,207,26,""],["DZ01-2","2A","S892297X4103863",21,208,12,""],["EN37-2","2B","S892297X4105723",21,208,26,""],["EN37-2","2B","S892297X3C15373",21,209,12,""],["EW01-2","1A","S892297X3C06307",21,209,26,""],["DZ01-2","2A","S892297X3C16322",22,212,12,""],["FC37-2","1B","S892297X4105734",22,212,26,""],["FC37-2","1B","S892297X4101562",22,213,12,""],["EW01-2","1A","S892297X3C14088",22,213,26,""],["DZ01-2","2A","S892297X3C18198",22,214,12,""],["EW01-2","1A","S892297X3C18200",22,214,26,""],["EN37-2","2B","S892297X3C14900",22,215,12,""],["FC37-2","1B","S892297X3C18197",22,215,26,""],["DZ01-2","2A","S892297X3B03210",22,216,12,""],["FC37-2","1B","S892297X3C18183",22,216,26,""],["EW01-2","1A","S892297X3C18207",22,217,12,""],["FC37-2","1B","S892297X3C18211",22,217,26,""],["EN37-2","2B","S892297X3C09231",22,218,12,""],["EW01-2","1A","S892297X3B03218",22,218,26,""],["FC37-2","1B","S892297X3C16306",22,219,12,""],["EW01-2","1A","S892297X3C14878",22,219,26,""],["DZ01-1","2A","S892297X3C17594",23,222,12,""],["FC37-1","1B","S892297X3C17610",23,222,26,""],["DZ01-1","2A","S892297X4101569",23,223,12,""],["EN37-1","2B","S892297X3C17602",23,223,26,""],["EN37-1","2B","S892297X3C12871",23,224,12,""],["EW01-1","1A","S892297X3B06049",23,224,26,""],["EN37-1","2B","S892297X3C14877",23,225,12,""],["DZ01-1","2A","S892297X4103865",23,225,26,""],["EN37-1","2B","S892297X3C11779",23,226,12,""],["FC37-1","1B","S892297X3C12863",23,226,26,""],["DZ01-1","2A","S892297X3C16316",23,227,12,""],["EW01-1","1A","S892297X3C14102",23,227,26,""],["DZ01-1","2A","S892297X3C14085",23,228,12,""],["EN37-1","2B","S892297X3C15369",23,228,26,""],["EN37-1","2B","S892297X4103842",23,229,12,""],["EW01-1","1A","S892297X3C16305",23,229,26,""],["DZ01-1","2A","S892297X3C17600",24,232,12,""],["FC37-1","1B","S892297X3C17571",24,232,26,""],["FC37-1","1B","S892297X3C14094",24,233,12,""],["EW01-1","1A","S892297X3C16321",24,233,26,""],["DZ01-1","2A","S892297X3C17595",24,234,12,""],["EW01-1","1A","S892297X4105711",24,234,26,""],["EN37-1","2B","S892297X3C14916",24,235,12,""],["FC37-1","1B","S892297X3C18187",24,235,26,""],["DZ01-1","2A","S892297X4105716",24,236,12,""],["FC37-1","1B","S892297X3C14895",24,236,26,""],["EW01-1","1A","S892297X4105725",24,237,12,""],["FC37-1","1B","S892297X3C16333",24,237,26,""],["EN37-1","2B","S892297X3C09218",24,238,12,""],["EW01-1","1A","S892297X3C17592",24,238,26,""],["FC37-1","1B","S892297X3C15377",24,239,12,""],["EW01-1","1A","S892297X4105732",24,239,26,""],["EG01-2","2A","S892297X4101559",25,242,12,""],["FK37-2","1B","S892297X4105715",25,242,26,""],["EG01-2","2A","S892297X4103856",25,243,12,""],["DL37-2","2B","S892297X4105736",25,243,26,""],["DL37-2","2B","S892297X3B02571",25,244,12,""],["FL01-2","1A","S892297X4103828",25,244,26,""],["DL37-2","2B","S892297X4101549",25,245,12,""],["EG01-2","2A","S892297X3C15368",25,245,26,""],["DL37-2","2B","S892297X3C14882",25,246,12,""],["FK37-2","1B","S892297X3C16325",25,246,26,""],["EG01-2","2A","S892297X3C14097",25,247,12,""],["FL01-2","1A","S892297X4105717",25,247,26,""],["EG01-2","2A","S892297X4103853",25,248,12,""],["DL37-2","2B","S892297X4105743",25,248,26,""],["DL37-2","2B","S892297X4101573",25,249,12,""],["FL01-2","1A","S892297X3C16317",25,249,26,""],["EG01-2","2A","S892297X4103822",26,252,12,""],["FK37-2","1B","S892297X3C14099",26,252,26,""],["FK37-2","1B","S892297X4103855",26,253,12,""],["FL01-2","1A","S892297X4103823",26,253,26,""],["EG01-2","2A","S892297X4103834",26,254,12,""],["FL01-2","1A","S892297X4103846",26,254,26,""],["DL37-2","2B","S892297X3C18216",26,255,12,""],["FK37-2","1B","S892297X3C16337",26,255,26,""],["EG01-2","2A","S892297X3C14875",26,256,12,""],["FK37-2","1B","S892297X3C18177",26,256,26,""],["FL01-2","1A","S892297X3C06298",26,257,12,""],["FK37-2","1B","S892297X4105727",26,257,26,""],["DL37-2","2B","S892297X4103851",26,258,12,""],["FL01-2","1A","S892297X4103841",26,258,26,""],["FK37-2","1B","S892297X4105713",26,259,12,""],["FL01-2","1A","S892297X3C18208",26,259,26,""],["EG01-1","2A","S892297X3C16328",27,262,12,""],["FK37-1","1B","S892297X3C11750",27,262,26,""],["EG01-1","2A","S892297X3B06872",27,263,12,""],["DL37-1","2B","S892297X3A38041",27,263,26,""],["DL37-1","2B","S892297X3C15339",27,264,12,""],["FL01-1","1A","S892297X3C16309",27,264,26,""],["DL37-1","2B","S892297X3C18174",27,265,12,""],["EG01-1","2A","S892297X3C16338",27,265,26,""],["DL37-1","2B","S892297X3C18184",27,266,12,""],["FK37-1","1B","S892297X3C00997",27,266,26,""],["EG01-1","2A","S892297X3C15355",27,267,12,""],["FL01-1","1A","S892297X3C06311",27,267,26,""],["EG01-1","2A","S892297X3C18185",27,268,12,""],["DL37-1","2B","S892297X3C15366",27,268,26,""],["DL37-1","2B","S892297X4101567",27,269,12,""],["FL01-1","1A","S892297X3C00981",27,269,26,""],["EG01-1","2A","S892297X3C17607",28,272,12,""],["FK37-1","1B","S892297X4101565",28,272,26,""],["FK37-1","1B","S892297X3C15361",28,273,12,""],["FL01-1","1A","S892297X3C16346",28,273,26,""],["EG01-1","2A","S892297X3C14893",28,274,12,""],["FL01-1","1A","S892297X3C15357",28,274,26,""],["DL37-1","2B","S892297X3C17576",28,275,12,""],["FK37-1","1B","S892297X3A38017",28,275,26,""],["EG01-1","2A","S892297X3C16334",28,276,12,""],["FK37-1","1B","S892297X3C14890",28,276,26,""],["FL01-1","1A","S892297X3C14874",28,277,12,""],["FK37-1","1B","S892297X3B02574",28,277,26,""],["DL37-1","2B","S892297X4103844",28,278,12,""],["FL01-1","1A","S892297X3C17585",28,278,26,""],["FK37-1","1B","S892297X3B19386",28,279,12,""],["FL01-1","1A","S892297X3B19396",28,279,26,""],["AU39-2","2A","S892297X4208392",29,282,12,""],["BN75-2","1B","S892297X4208383",29,282,26,""],["AU39-2","2A","S892297X4208859",29,283,12,""],["AR75-2","2B","S892297X4207494",29,283,26,""],["AR75-2","2B","S892297X4208385",29,284,12,""],["BR39-2","1A","S892297X4208410",29,284,26,""],["AR75-2","2B","S892297X4208421",29,285,12,""],["AU39-2","2A","S892297X4208411",29,285,26,""],["AR75-2","2B","S892297X4208856",29,286,12,""],["BN75-2","1B","S892297X4203748",29,286,26,""],["AU39-2","2A","S892297X4208855",29,287,12,""],["BR39-2","1A","S892297X4208427",29,287,26,""],["AU39-2","2A","S892297X4208872",29,288,12,""],["AR75-2","2B","S892297X4208390",29,288,26,""],["AR75-2","2B","S892297X4208394",29,289,12,""],["BR39-2","1A","S892297X4208384",29,289,26,""],["AU39-2","2A","S892297X4208850",30,292,12,""],["BN75-2","1B","S892297X4208401",30,292,26,""],["BN75-2","1B","S892297X4201962",30,293,12,""],["BR39-2","1A","S892297X4208422",30,293,26,""],["AU39-2","2A","S892297X4206421",30,294,12,""],["BR39-2","1A","S892297X4207489",30,294,26,""],["AR75-2","2B","S892297X4208423",30,295,12,""],["BN75-2","1B","S892297X4208893",30,295,26,""],["AU39-2","2A","S892297X4208393",30,296,12,""],["BN75-2","1B","S892297X4208380",30,296,26,""],["BR39-2","1A","S892297X4205251",30,297,12,""],["BN75-2","1B","S892297X4208420",30,297,26,""],["AR75-2","2B","S892297X4208395",30,298,12,""],["BR39-2","1A","S892297X4208871",30,298,26,""],["BN75-2","1B","S892297X4208415",30,299,12,""],["BR39-2","1A","S892297X4208857",30,299,26,""],["AU39-1","2A","S892297X4207483",31,302,12,""],["BN75-1","1B","S892297X4207500",31,302,26,""],["AU39-1","2A","S892297X4208864",31,303,12,""],["AR75-1","2B","S892297X4208409",31,303,26,""],["AR75-1","2B","S892297X4208391",31,304,12,""],["BR39-1","1A","S892297X4208400",31,304,26,""],["AR75-1","2B","S892297X4206424",31,305,12,""],["AU39-1","2A","S892297X4208398",31,305,26,""],["AR75-1","2B","S892297X4208879",31,306,12,""],["BN75-1","1B","S892297X4206435",31,306,26,""],["AU39-1","2A","S892297X4208865",31,307,12,""],["BR39-1","1A","S892297X4208878",31,307,26,""],["AU39-1","2A","S892297X4208418",31,308,12,""],["AR75-1","2B","S892297X4208381",31,308,26,""],["AR75-1","2B","S892297X4123559",31,309,12,""],["BR39-1","1A","S892297X4208417",31,309,26,""],["AU39-1","2A","S892297X4208397",32,312,12,""],["BN75-1","1B","S892297X4206450",32,312,26,""],["BN75-1","1B","S892297X4207492",32,313,12,""],["BR39-1","1A","S892297X4205252",32,313,26,""],["AU39-1","2A","S892297X4201984",32,314,12,""],["BR39-1","1A","S892297X4205242",32,314,26,""],["AR75-1","2B","S892297X4208888",32,315,12,""],["BN75-1","1B","S892297X4208887",32,315,26,""],["AU39-1","2A","S892297X4208860",32,316,12,""],["BN75-1","1B","S892297X4208403",32,316,26,""],["BR39-1","1A","S892297X4208886",32,317,12,""],["BN75-1","1B","S892297X4208853",32,317,26,""],["AR75-1","2B","S892297X4208413",32,318,12,""],["BR39-1","1A","S892297X4207498",32,318,26,""],["BN75-1","1B","S892297X4208404",32,319,12,""],["BR39-1","1A","S892297X4208869",32,319,26,""],["BB39-2","2A","S892297X4208387",33,322,12,""],["CC75-2","1B","S892297X4208862",33,322,26,""],["BB39-2","2A","S892297X4208424",33,323,12,""],["AY75-2","2B","S892297X4208877",33,323,26,""],["AY75-2","2B","S892297X4208378",33,324,12,""],["BY39-2","1A","S892297X4208414",33,324,26,""],["AY75-2","2B","S892297X4207493",33,325,12,""],["BB39-2","2A","S892297X4206453",33,325,26,""],["AY75-2","2B","S892297X4208882",33,326,12,""],["CC75-2","1B","S892297X4208405",33,326,26,""],["BB39-2","2A","S892297X4208412",33,327,12,""],["BY39-2","1A","S892297X4208885",33,327,26,""],["AY75-2","2B","S892297X4208386",33,328,12,""],["BB39-2","2A","S892297X4208861",33,328,26,""],["AY75-2","2B","S892297X4208858",33,329,12,""],["BY39-2","1A","S892297X4208396",33,329,26,""],["BB39-2","2A","S892297X4208894",34,332,12,""],["CC75-2","1B","S892297X4208854",34,332,26,""],["CC75-2","1B","S892297X4208379",34,333,12,""],["BY39-2","1A","S892297X4206449",34,333,26,""],["BB39-2","2A","S892297X4208419",34,334,12,""],["BY39-2","1A","S892297X4208416",34,334,26,""],["AY75-2","2B","S892297X4206451",34,335,12,""],["CC75-2","1B","S892297X4206444",34,335,26,""],["BB39-2","2A","S892297X4208388",34,336,12,""],["CC75-2","1B","S892297X4123570",34,336,26,""],["BY39-2","1A","S892297X4208408",34,337,12,""],["CC75-2","1B","S892297X4208389",34,337,26,""],["AY75-2","2B","S892297X4208852",34,338,12,""],["BY39-2","1A","S892297X4208870",34,338,26,""],["CC75-2","1B","S892297X4208851",34,339,12,""],["BY39-2","1A","S892297X4208425",34,339,26,""],["BB39-1","2A","S892297X4202979",35,342,12,""],["CC75-1","1B","S892297X4203751",35,342,26,""],["BB39-1","2A","S892297X4202001",35,343,12,""],["AY75-1","2B","S892297X4203763",35,343,26,""],["BY39-1","1A","S892297X4203755",35,344,12,""],["AY75-1","2B","S892297X4201978",35,344,26,""],["AY75-1","2B","S892297X4203749",35,345,12,""],["BB39-1","2A","S892297X4201982",35,345,26,""],["AY75-1","2B","S892297X4203760",35,346,12,""],["CC75-1","1B","S892297X4203017",35,346,26,""],["BB39-1","2A","S892297X4203758",35,347,12,""],["BY39-1","1A","S892297X4203766",35,347,26,""],["BB39-1","2A","S892297X4203756",35,348,12,""],["AY75-1","2B","S892297X4203010",35,348,26,""],["AY75-1","2B","S892297X4208866",35,349,12,""],["BY39-1","1A","S892297X4208406",35,349,26,""],["BB39-1","2A","S892297X4203759",36,352,12,""],["CC75-1","1B","S892297X4203008",36,352,26,""],["CC75-1","1B","S892297X4201977",36,353,12,""],["BY39-1","1A","S892297X4123544",36,353,26,""],["BB39-1","2A","S892297X4203764",36,354,12,""],["BY39-1","1A","S892297X4201991",36,354,26,""],["AY75-1","2B","S892297X4203720",36,355,12,""],["CC75-1","1B","S892297X4203024",36,355,26,""],["BB39-1","2A","S892297X4205267",36,356,12,""],["CC75-1","1B","S892297X4205261",36,356,26,""],["BY39-1","1A","S892297X4205254",36,357,12,""],["CC75-1","1B","S892297X4201969",36,357,26,""],["AY75-1","2B","S892297X4203757",36,358,12,""],["BY39-1","1A","S892297X4205271",36,358,26,""],["CC75-1","1B","S892297X4205272",36,359,12,""],["BY39-1","1A","S892297X4202998",36,359,26,""],["BJ39-2","2A","S892297X4203023",37,362,12,""],["CP75-2","1B","S892297X4205286",37,362,26,""],["BJ39-2","2A","S892297X4205279",37,363,12,""],["BF75-2","2B","S892297X4205263",37,363,26,""],["BF75-2","2B","S892297X4202981",37,364,12,""],["CF39-2","1A","S892297X4203723",37,364,26,""],["BF75-2","2B","S892297X4205264",37,365,12,""],["BJ39-2","2A","S892297X3C16646",37,365,26,""],["BF75-2","2B","S892297X4205245",37,366,12,""],["CP75-2","1B","S892297X4201988",37,366,26,""],["BJ39-2","2A","S892297X4202976",37,367,12,""],["CF39-2","1A","S892297X4202994",37,367,26,""],["BJ39-2","2A","S892297X4202992",37,368,12,""],["BF75-2","2B","S892297X4203005",37,368,26,""],["BF75-2","2B","S892297X4203746",37,369,12,""],["CF39-2","1A","S892297X4202983",37,369,26,""],["BJ39-2","2A","S892297X4202989",38,372,12,""],["CP75-2","1B","S892297X4202982",38,372,26,""],["CP75-2","1B","S892297X4203740",38,373,12,""],["CF39-2","1A","S892297X4202990",38,373,26,""],["BJ39-2","2A","S892297X4203019",38,374,12,""],["CF39-2","1A","S892297X4201981",38,374,26,""],["BF75-2","","S892297X4201995",38,375,12,""],["CP75-2","1B","S892297X4203753",38,375,26,""],["BJ39-2","2A","S892297X4203722",38,376,12,""],["CP75-2","1B","S892297X4203730",38,376,26,""],["CF39-2","1A","S892297X4203750",38,377,12,""],["CP75-2","1B","S892297X4201965",38,377,26,""],["BF75-2","2B","S892297X4201999",38,378,12,""],["CF39-2","1A","S892297X4202987",38,378,26,""],["CP75-2","1B","S892297X4203004",38,379,12,""],["CF39-2","1A","S892297X4202999",38,379,26,""],["DS39-1","2A","S892297X4203727",43,422,12,""],["EN75-1","1B","S892297X4203767",43,422,26,""],["DS39-1","2A","S892297X4201967",43,423,12,""],["CX75-1","2B","S892297X4202997",43,423,26,""],["CX75-1","2B","S892297X4202991",43,424,12,""],["EW39-1","1A","S892297X4202986",43,424,26,""],["CX75-1","2B","S892297X4201966",43,425,12,""],["DS39-1","2A","S892297X4101580",43,425,26,""],["CX75-1","2B","S892297X4203732",43,426,12,""],["EN75-1","1B","S892297X4202996",43,426,26,""],["DS39-1","2A","S892297X4203003",43,427,12,""],["EW39-1","1A","S892297X4123530",43,427,26,""],["DS39-1","2A","S892297X4202995",43,428,12,""],["CX75-1","2B","S892297X4123567",43,428,26,""],["CX75-1","2B","S892297X4203721",43,429,12,""],["EW39-1","1A","S892297X4123532",43,429,26,""],["DS39-1","2A","S892297X4123569",44,432,12,""],["EN75-1","1B","S892297X4203011",44,432,26,""],["EN75-1","1B","S892297X4123557",44,433,12,""],["EW39-1","1A","S892297X4203016",44,433,26,""],["DS39-1","2A","S892297X4203762",44,434,12,""],["EW39-1","1A","S892297X4123540",44,434,26,""],["CX75-1","2B","S892297X4203015",44,435,12,""],["EN75-1","1B","S892297X4203742",44,435,26,""],["DS39-1","2A","S892297X4203752",44,436,12,""],["EN75-1","1B","S892297X4203739",44,436,26,""],["EW39-1","1A","S892297X4103852",44,437,12,""],["EN75-1","1B","S892297X4201998",44,437,26,""],["CX75-1","2B","S892297X4202985",44,438,12,""],["EW39-1","1A","S892297X4202980",44,438,26,""],["EN75-1","1B","S892297X4203726",44,439,12,""],["EW39-1","1A","S892297X4203006",44,439,26,""],["DZ39-2","2A","S892297X4203018",45,442,12,""],["EV75-2","1B","S892297X4123525",45,442,26,""],["DZ39-2","2A","S892297X4201986",45,443,12,""],["DH75-2","2B","S892297X4203009",45,443,26,""],["DH75-2","2B","S892297X4123572",45,444,12,""],["FD39-2","1A","S892297X4201971",45,444,26,""],["DH75-2","2B","S892297X4203744",45,445,12,""],["DZ39-2","2A","S892297X4203738",45,445,26,""],["DH75-2","2B","S892297X4202003",45,446,12,""],["EV75-2","1B","S892297X4201993",45,446,26,""],["DZ39-2","2A","S892297X4201983",45,447,12,""],["FD39-2","1A","S892297X4201970",45,447,26,""],["DZ39-2","2A","S892297X4201976",45,448,12,""],["DH75-2","2B","S892297X4201989",45,448,26,""],["DH75-2","2B","S892297X4123534",45,449,12,""],["FD39-2","1A","S892297X4201980",45,449,26,""],["DZ39-2","2A","S892297X3C14902",46,452,12,""],["EV75-2","1B","S892297X3C17618",46,452,26,""],["EV75-2","1B","S892297X4105735",46,453,12,""],["FD39-2","1A","S892297X3B19392",46,453,26,""],["DZ39-2","2A","S892297X4103843",46,454,12,""],["FD39-2","1A","S892297X3B03209",46,454,26,""],["DH75-2","2B","S892297X4201992",46,455,12,""],["EV75-2","1B","S892297X4103824",46,455,26,""],["DZ39-2","2A","S892297X4201997",46,456,12,""],["EV75-2","1B","S892297X4123566",46,456,26,""],["FD39-2","1A","S892297X4203020",46,457,12,""],["EV75-2","1B","S892297X4123528",46,457,26,""],["DH75-2","2B","S892297X4202988",46,458,12,""],["FD39-2","1A","S892297X3C15346",46,458,26,""],["EV75-2","1B","S892297X4201979",46,459,12,""],["FD39-2","1A","S892297X4123558",46,459,26,""],["DZ39-1","2A","S892297X3C16308",47,462,12,""],["EV75-1","1B","S892297X4103831",47,462,26,""],["DZ39-1","2A","S892297X3C17569",47,463,12,""],["DH75-1","2B","S892297X4103857",47,463,26,""],["DH75-1","2B","S892297X4103850",47,464,12,""],["FD39-1","1A","S892297X3C18186",47,464,26,""],["DH75-1","2B","S892297X3C12881",47,465,12,""],["DZ39-1","2A","S892297X3C12855",47,465,26,""],["DH75-1","2B","S892297X3C16326",47,466,12,""],["EV75-1","1B","S892297X4103860",47,466,26,""],["DZ39-1","2A","S892297X3C17584",47,467,12,""],["FD39-1","1A","S892297X4103840",47,467,26,""],["DZ39-1","2A","S892297X3C09222",47,468,12,""],["DH75-1","2B","S892297X3C17613",47,468,26,""],["FD39-1","1A","S892297X4101546",47,469,12,""],["EV75-1","1B","S892297X3C16324",47,469,26,""],["DZ39-1","2A","S892297X3C14872",48,472,12,""],["EV75-1","1B","S892297X3C16329",48,472,26,""],["EV75-1","1B","S892297X3C11763",48,473,12,""],["FD39-1","1A","S892297X3C18194",48,473,26,""],["DZ39-1","2A","S892297X3C17580",48,474,12,""],["FD39-1","1A","S892297X3C12862",48,474,26,""],["DH75-1","2B","S892297X3C15342",48,475,12,""],["EV75-1","1B","S892297X3C18210",48,475,26,""],["DZ39-1","2A","S892297X3C14096",48,476,12,""],["EV75-1","1B","S892297X3C17590",48,476,26,""],["FD39-1","1A","S892297X3C17617",48,477,12,""],["EV75-1","1B","S892297X3C15367",48,477,26,""],["DH75-1","2B","S892297X4101555",48,478,12,""],["FD39-1","1A","S892297X3C11749",48,478,26,""],["EV75-1","1B","S892297X4105708",48,479,12,""],["FD39-1","1A","S892297X4103858",48,479,26,""],["EG39-2","2A","S892297X4103837",49,482,12,""],["DG39-2","1B","S892297X4105704",49,482,26,""],["EG39-2","2A","S892297X3C11764",49,483,12,""],["DX75-2","2B","S892297X3C18217",49,483,26,""],["DX75-2","2B","S892297X3C01817",49,484,12,""],["FL39-2","1A","S892297X3C17589",49,484,26,""],["DX75-2","2B","S892297X3C17597",49,485,12,""],["EG39-2","2A","S892297X3C15385",49,485,26,""],["DX75-2","2B","S892297X3C16332",49,486,12,""],["DG39-2","1B","S892297X3C17608",49,486,26,""],["EG39-2","2A","S892297X3C14120",49,487,12,""],["FL39-2","1A","S892297X3C00973",49,487,26,""],["EG39-2","2A","S892297X3C17579",49,488,12,""],["DX75-2","2B","S892297X4101570",49,488,26,""],["DX75-2","2B","S892297X3C06288",49,489,12,""],["FL39-2","1A","S892297X4103836",49,489,26,""],["EG39-2","2A","S892297X3C16347",50,492,12,""],["DG39-2","1B","S892297X3B02513",50,492,26,""],["DG39-2","1B","S892297X4105707",50,493,12,""],["FL39-2","1A","S892297X3C15358",50,493,26,""],["EG39-2","2A","S892297X3C00986",50,494,12,""],["FL39-2","1A","S892297X3C01012",50,494,26,""],["DX75-2","2B","S892297X3C16314",50,495,12,""],["DG39-2","1B","S892297X3B06858",50,495,26,""],["EG39-2","2A","S892297X4105728",50,496,12,""],["DG39-2","1B","S892297X3C17598",50,496,26,""],["FL39-2","1A","S892297X4105703",50,497,12,""],["DG39-2","1B","S892297X3C18191",50,497,26,""],["DX75-2","2B","S892297X3C17581",50,498,12,""],["FL39-2","1A","S892297X3C17605",50,498,26,""],["DG39-2","1B","S892297X4101545",50,499,12,""],["FL39-2","1A","S892297X4103820",50,499,26,""],["EG39-1","2A","S892297X3C18222",51,502,12,""],["DG39-1","1B","S892297X4105740",51,502,26,""],["EG39-1","2A","S892297X3C18213",51,503,12,""],["DX75-1","2B","S892297X3C17606",51,503,26,""],["DX75-1","2B","S892297X3C11762",51,504,12,""],["FL39-1","1A","S892297X3C17572",51,504,26,""],["DX75-1","2B","S892297X3C11768",51,505,12,""],["EG39-1","2A","S892297X3C17586",51,505,26,""],["DX75-1","2B","S892297X4105738",51,506,12,""],["DG39-1","1B","S892297X4103845",51,506,26,""],["EG39-1","2A","S892297X3C09204",51,507,12,""],["FL39-1","1A","S892297X3C16641",51,507,26,""],["EG39-1","2A","S892297X3C16302",51,508,12,""],["DX75-1","2B","S892297X4101572",51,508,26,""],["DX75-1","2B","S892297X3C14898",51,509,12,""],["FL39-1","1A","S892297X3C16313",51,509,26,""],["EG39-1","2A","S892297X3C17575",52,512,12,""],["DG39-1","1B","S892297X4103854",52,512,26,""],["DG39-1","1B","S892297X3C14892",52,513,12,""],["FL39-1","1A","S892297X3C17577",52,513,26,""],["EG39-1","2A","S892297X3C17574",52,514,12,""],["FL39-1","1A","S892297X4103830",52,514,26,""],["DX75-1","2B","S892297X3C14073",52,515,12,""],["DG39-1","1B","S892297X3C06308",52,515,26,""],["EG39-1","2A","S892297X3C01808",52,516,12,""],["DG39-1","1B","S892297X3C16327",52,516,26,""],["FL39-1","1A","S892297X3C14098",52,517,12,""],["DG39-1","1B","S892297X4101550",52,517,26,""],["DX75-1","2B","S892297X3C17591",52,518,12,""],["FL39-1","1A","S892297X3C06293",52,518,26,""],["DG39-1","1B","S892297X3B02517",52,519,12,""],["FL39-1","1A","S892297X3C11755",52,519,26,""],["EP39-2","2A","S892297X4101552",53,522,12,""],["FK75-2","1B","S892297X4103867",53,522,26,""],["EP39-2","2A","S892297X3C17578",53,523,12,""],["EE75-2","2B","S892297X3C17583",53,523,26,""],["EE75-2","2B","S892297X3C15383",53,524,12,""],["DL39-2","1A","S892297X3C16331",53,524,26,""],["EE75-2","2B","S892297X4105718",53,525,12,""],["EP39-2","2A","S892297X4105706",53,525,26,""],["EE75-2","2B","S892297X4105724",53,526,12,""],["FK75-2","1B","S892297X4101557",53,526,26,""],["EP39-2","2A","S892297X3C16311",53,527,12,""],["DL39-2","1A","S892297X3C16310",53,527,26,""],["EP39-2","2A","S892297X3C12882",53,528,12,""],["EE75-2","2B","S892297X4105721",53,528,26,""],["EE75-2","2B","S892297X3C14903",53,529,12,""],["DL39-2","1A","S892297X3C12853",53,529,26,""],["EP39-2","2A","S892297X3C12851",54,532,12,""],["FK75-2","1B","S892297X3C09224",54,532,26,""],["FK75-2","1B","S892297X3C14901",54,533,12,""],["DL39-2","1A","S892297X3C12860",54,533,26,""],["EP39-2","2A","S892297X3C15359",54,534,12,""],["DL39-2","1A","S892297X4103839",54,534,26,""],["EE75-2","2B","S892297X3C17612",54,535,12,""],["FK75-2","1B","S892297X3C15356",54,535,26,""],["EP39-2","2A","S892297X3C01815",54,536,12,""],["FK75-2","1B","S892297X3C11769",54,536,26,""],["DL39-2","1A","S892297X3C16348",54,537,12,""],["FK75-2","1B","S892297X4105701",54,537,26,""],["EE75-2","2B","S892297X4105746",54,538,12,""],["DL39-2","1A","S892297X4101543",54,538,26,""],["FK75-2","1B","S892297X3C18205",54,539,12,""],["DL39-2","1A","S892297X3C18221",54,539,26,""],["EP39-1","2A","S892297X3C15381",55,542,12,""],["FK75-1","1B","S892297X3C14106",55,542,26,""],["EP39-1","2A","S892297X3C18189",55,543,12,""],["EE75-1","2B","S892297X3C16301",55,543,26,""],["EE75-1","2B","S892297X4103838",55,544,12,""],["DL39-1","1A","S892297X4101542",55,544,26,""],["EE75-1","2B","S892297X4105726",55,545,12,""],["EP39-1","2A","S892297X4105705",55,545,26,""],["EE75-1","2B","S892297X3C14880",55,546,12,""],["FK75-1","1B","S892297X3C09244",55,546,26,""],["EP39-1","2A","S892297X3C14885",55,547,12,""],["DL39-1","1A","S892297X4103835",55,547,26,""],["EP39-1","2A","S892297X3C18220",55,548,12,""],["EE75-1","2B","S892297X3C12883",55,548,26,""],["EE75-1","2B","S892297X3C11765",55,549,12,""],["DL39-1","1A","S892297X3C14876",55,549,26,""],["EP39-1","2A","S892297X3C16630",56,552,12,""],["FK75-1","1B","S892297X3C16652",56,552,26,""],["FK75-1","1B","S892297X3C14095",56,553,12,""],["DL39-1","1A","S892297X3C16638",56,553,26,""],["EP39-1","2A","S892297X4103849",56,554,12,""],["DL39-1","1A","S892297X3C12879",56,554,26,""],["EE75-1","2B","S892297X4101568",56,555,12,""],["FK75-1","1B","S892297X4101544",56,555,26,""],["EP39-1","2A","S892297X3C01003",56,556,12,""],["FK75-1","1B","S892297X3C15362",56,556,26,""],["DL39-1","1A","S892297X3C16307",56,557,12,""],["FK75-1","1B","S892297X3C14881",56,557,26,""],["EE75-1","2B","S892297X3C15384",56,558,12,""],["DL39-1","1A","S892297X3C16345",56,558,26,""],["FK75-1","1B","S892297X3A38018",56,559,12,""],["DL39-1","1A","S892297X3C16320",56,559,26,""]];
+const COMPUTE_NODES=_cn.map(([rpp,phase,serial,row,cab,rackU,notes])=>({rpp,phase,serial,row,cab,rackU,notes}));
+const _nd=[[["AS01-2","BW01-2"],1,1,"18","MT2346200141"],[["AS01-2","BW01-2"],1,1,"20","MT2346200326"],[["AS01-2","BW01-2"],1,1,"22","72482307250830"],[["AS01-2","BW01-2"],1,1,"25","MT2339XZ0JGQ"],[["AS01-2","BW01-2"],1,1,"26","MT2339XZ0JH5"],[["AS01-2","BW01-2"],1,1,"28","MT2339XZ0JJF"],[["AS01-2","BW01-2"],1,1,"29","MT2339XZ0JJD"],[["AS01-2","BW01-2"],1,1,"31","MT2345XZ098H"],[["AS01-2","BW01-2"],1,1,"33","MT2345XZ098E"],[["AS01-2","BW01-2"],1,1,"35","MT2345XZ098X"],[["AS01-2","BW01-2"],1,1,"37","MT2345XZ098Q"],[["AS01-2","BW01-2"],1,1,"40","MT2345XZ098G"],[["AS01-2","BW01-2"],1,1,"42","MT2345XZ098C"],[["AT37-2","BQ37-2"],1,10,"10","MT2345XZ09CX"],[["AT37-2","BQ37-2"],1,10,"11","MT2345XZ09CV"],[["AT37-2","BQ37-2"],1,10,"16","MT2345XZ09B0"],[["AT37-2","BQ37-2"],1,10,"17","MT2345XZ09AZ"],[["AT37-2","BQ37-2"],1,10,"20","MT2346200581"],[["AT37-2","BQ37-2"],1,10,"22","72482307250790"],[["AT37-2","BQ37-2"],1,10,"25","MT2350J01BAV"],[["AT37-2","BQ37-2"],1,10,"26","MT2350J01BAK"],[["AT37-2","BQ37-2"],1,10,"28","MT2353J0032D"],[["AT37-2","BQ37-2"],1,10,"29","MT2353J0032E"],[["AT37-2","BQ37-2"],1,10,"35","MT2347XZ08FW"],[["AT37-2","BQ37-2"],1,10,"36","MT2347XZ08G4"],[["AT37-2","BQ37-2"],1,10,"41","MT2345XZ0A2F"],[["AT37-2","BQ37-2"],1,10,"42","MT2345XZ09CW"],[["AT37-2","BQ37-2"],2,11,"3","MT2344T00H9D"],[["AT37-2","BQ37-2"],2,11,"4","MT2345T00LWD"],[["AT37-2","BQ37-2"],2,11,"6","MT2345T00LX2"],[["AT37-2","BQ37-2"],2,11,"7","MT2344T00H9B"],[["AT37-2","BQ37-2"],2,11,"9","MT2344T00HQQ"],[["AT37-2","BQ37-2"],2,11,"10","MT2345T00LX7"],[["AT37-2","BQ37-2"],2,11,"12","MT2344T00H8V"],[["AT37-2","BQ37-2"],2,11,"13","MT2345T00LX6"],[["AT37-2","BQ37-2"],2,11,"18","MT2346200457"],[["AT37-2","BQ37-2"],2,11,"20","MT2346200573"],[["AT37-2","BQ37-2"],2,11,"22","72482307250863"],[["AT37-2","BQ37-2"],2,11,"40","MT2345XZ09HL"],[["AT37-2","BQ37-2"],2,11,"42","MT2345XZ09HF"],[["AS01-1","BW01-1"],3,21,"18","MT2346200477"],[["AS01-1","BW01-1"],3,21,"20","MT2346200541"],[["AS01-1","BW01-1"],3,21,"22","72482307250827"],[["AS01-1","BW01-1"],3,21,"40","MT2347XZ08GA"],[["AS01-1","BW01-1"],3,21,"42","MT2347XZ08FU"],[["BQ37-1","AT37-1"],4,31,"3","MT2344T00HMX"],[["BQ37-1","AT37-1"],4,31,"4","MT2344T00HHW"],[["BQ37-1","AT37-1"],4,31,"6","MT2345T00LX3"],[["BQ37-1","AT37-1"],4,31,"7","MT2344T00HMC"],[["BQ37-1","AT37-1"],4,31,"9","MT2344T00HLP"],[["BQ37-1","AT37-1"],4,31,"10","MT2344T00HHR"],[["BQ37-1","AT37-1"],4,31,"12","MT2345T00LVW"],[["BQ37-1","AT37-1"],4,31,"13","MT2345T00LWA"],[["BQ37-1","AT37-1"],4,31,"18","MT2346200657"],[["BQ37-1","AT37-1"],4,31,"20","MT2346200615"],[["BQ37-1","AT37-1"],4,31,"22","72482307250752"],[["BQ37-1","AT37-1"],4,31,"40","MT2345XZ09CR"],[["BQ37-1","AT37-1"],4,31,"42","MT2347XZ08G1"],[["AZ01-2","CD01-2"],5,41,"18","MT2346200303"],[["AZ01-2","CD01-2"],5,41,"20","MT2346200649"],[["AZ01-2","CD01-2"],5,41,"22","72482307250828"],[["AZ01-2","CD01-2"],5,41,"40","MT2345XZ09KR"],[["AZ01-2","CD01-2"],5,41,"42","MT2347XZ08FY"],[["BA37-2","BX37-2"],6,51,"3","MT2345T00LVT"],[["BA37-2","BX37-2"],6,51,"4","MT2345T00LVG"],[["BA37-2","BX37-2"],6,51,"6","MT2342T00D54"],[["BA37-2","BX37-2"],6,51,"7","MT2344T00HM9"],[["BA37-2","BX37-2"],6,51,"9","MT2345T00LVU"],[["BA37-2","BX37-2"],6,51,"10","MT2344T00HJ8"],[["BA37-2","BX37-2"],6,51,"12","MT2345T00LWX"],[["BA37-2","BX37-2"],6,51,"13","MT2345T00LW4"],[["BA37-2","BX37-2"],6,51,"18","MT2346200218"],[["BA37-2","BX37-2"],6,51,"20","MT2346200621"],[["BA37-2","BX37-2"],6,51,"22","72482307250734"],[["BA37-2","BX37-2"],6,51,"40","MT2345XZ09CT"],[["BA37-2","BX37-2"],6,51,"42","MT2345XZ098A"],[["AZ01-1","CD01-1"],7,61,"18","MT2346200346"],[["AZ01-1","CD01-1"],7,61,"20","MT2346200613"],[["AZ01-1","CD01-1"],7,61,"22","72482307250911"],[["AZ01-1","CD01-1"],7,61,"40","MT2345XZ09EU"],[["AZ01-1","CD01-1"],7,61,"42","MT2345XZ097C"],[["BX37-1","BA37-1"],8,71,"3","MT2342T00DMD"],[["BX37-1","BA37-1"],8,71,"4","MT2344T00H9C"],[["BX37-1","BA37-1"],8,71,"6","MT2342T00DMF"],[["BX37-1","BA37-1"],8,71,"7","MT2345T00LZQ"],[["BX37-1","BA37-1"],8,71,"9","MT2342T00DCT"],[["BX37-1","BA37-1"],8,71,"10","MT2342T00DN4"],[["BX37-1","BA37-1"],8,71,"12","MT2342T00D5G"],[["BX37-1","BA37-1"],8,71,"13","MT2342T00DCQ"],[["BX37-1","BA37-1"],8,71,"18","MT2346200200"],[["BX37-1","BA37-1"],8,71,"20","MT2346200441"],[["BX37-1","BA37-1"],8,71,"22","72482307250820"],[["BX37-1","BA37-1"],8,71,"40","MT2345XZ0987"],[["BX37-1","BA37-1"],8,71,"42","MT2345XZ0989"],[["BP01-2","CH01-2"],9,81,"18","MT2346200160"],[["BP01-2","CH01-2"],9,81,"20","MT2346200055"],[["BP01-2","CH01-2"],9,81,"22","72482307250748"],[["BP01-2","CH01-2"],9,81,"40","MT2345XZ097B"],[["BP01-2","CH01-2"],9,81,"42","MT2345XZ09D0"],[["CE37-2","BH37-2"],10,91,"3","MT2344T00HGR"],[["CE37-2","BH37-2"],10,91,"4","MT2344T00HME"],[["CE37-2","BH37-2"],10,91,"6","MT2342T00D51"],[["CE37-2","BH37-2"],10,91,"7","MT2345T00LWJ"],[["CE37-2","BH37-2"],10,91,"9","MT2345T00LWR"],[["CE37-2","BH37-2"],10,91,"10","MT2344T00HMU"],[["CE37-2","BH37-2"],10,91,"12","MT2344T00HLZ"],[["CE37-2","BH37-2"],10,91,"13","MT2344T00HQD"],[["CE37-2","BH37-2"],10,91,"18","MT2346200688"],[["CE37-2","BH37-2"],10,91,"20","MT2346200144"],[["CE37-2","BH37-2"],10,91,"22","72482307250996"],[["CE37-2","BH37-2"],10,91,"40","MT2347XZ08FV"],[["CE37-2","BH37-2"],10,91,"42","MT2345XZ09CU"],[["BP01-1","CH01-1"],11,101,"18","MT2346200387"],[["BP01-1","CH01-1"],11,101,"20","MT2346200633"],[["BP01-1","CH01-1"],11,101,"22","72482307250808"],[["BP01-1","CH01-1"],11,101,"25","MT2339XZ0JJE"],[["BP01-1","CH01-1"],11,101,"26","MT2339XZ0JHT"],[["BP01-1","CH01-1"],11,101,"28","MT2339XZ0JEU"],[["BP01-1","CH01-1"],11,101,"29","MT2339XZ0JJK"],[["BP01-1","CH01-1"],11,101,"31","MT2345XZ098F"],[["BP01-1","CH01-1"],11,101,"33","MT2347XZ08G0"],[["BP01-1","CH01-1"],11,101,"35","MT2345XZ09AW"],[["BP01-1","CH01-1"],11,101,"37","MT2345XZ0985"],[["BP01-1","CH01-1"],11,101,"40","MT2345XZ09AY"],[["BP01-1","CH01-1"],11,101,"42","MT2347XZ08G2"],[["CE37-1","BH37-1"],12,111,"3","MT2342T00D5A"],[["CE37-1","BH37-1"],12,111,"4","MT2342T00D4Z"],[["CE37-1","BH37-1"],12,111,"6","MT2342T00D3H"],[["CE37-1","BH37-1"],12,111,"7","MT2344T00H99"],[["CE37-1","BH37-1"],12,111,"9","MT2344T00H8M"],[["CE37-1","BH37-1"],12,111,"10","MT2344T00HM7"],[["CE37-1","BH37-1"],12,111,"12","MT2344T00HAZ"],[["CE37-1","BH37-1"],12,111,"13","MT2342T00D31"],[["CE37-1","BH37-1"],12,111,"18","MT2346200667"],[["CE37-1","BH37-1"],12,111,"20","MT2346200076"],[["CE37-1","BH37-1"],12,111,"22","72482307250824"],[["CE37-1","BH37-1"],12,111,"40","MT2347XZ08FX"],[["CE37-1","BH37-1"],12,111,"42","MT2347XZ08FZ"],[["DL01-2","DG01-2"],13,121,"18","MT2346200004"],[["DL01-2","DG01-2"],13,121,"20","MT2346200333"],[["DL01-2","DG01-2"],13,121,"22","72482307250785"],[["DL01-2","DG01-2"],13,121,"40","MT2345XZ0A2J"],[["DL01-2","DG01-2"],13,121,"42","MT2345XZ098M"],[["DR37-2","DY37-2"],14,131,"3","MT2342T00D4P"],[["DR37-2","DY37-2"],14,131,"4","MT2342T00D4V"],[["DR37-2","DY37-2"],14,131,"6","MT2344T00HJP"],[["DR37-2","DY37-2"],14,131,"7","MT2344T00H9A"],[["DR37-2","DY37-2"],14,131,"9","MT2345T00LWH"],[["DR37-2","DY37-2"],14,131,"10","MT2342T00DMV"],[["DR37-2","DY37-2"],14,131,"12","MT2344T00H8N"],[["DR37-2","DY37-2"],14,131,"13","MT2344T00HGM"],[["DR37-2","DY37-2"],14,131,"18","MT2346200016"],[["DR37-2","DY37-2"],14,131,"20","MT2346200036"],[["DR37-2","DY37-2"],14,131,"22","72482307250839"],[["DR37-2","DY37-2"],14,131,"40","MT2345XZ09H8"],[["DR37-2","DY37-2"],14,131,"42","MT2345XZ09JY"],[["DL01-1","DG01-1"],15,141,"18","MT2346200335"],[["DL01-1","DG01-1"],15,141,"20","MT2346200263"],[["DL01-1","DG01-1"],15,141,"22","72482307250799"],[["DL01-1","DG01-1"],15,141,"40","MT2347XZ08FT"],[["DL01-1","DG01-1"],15,141,"42","MT2345XZ098K"],[["DR37-1","DY37-1"],16,151,"3","MT2342T00DC4"],[["DR37-1","DY37-1"],16,151,"4","MT2342T00DPH"],[["DR37-1","DY37-1"],16,151,"6","MT2345T00LVP"],[["DR37-1","DY37-1"],16,151,"7","MT2342T00DCU"],[["DR37-1","DY37-1"],16,151,"9","MT2345T00LVF"],[["DR37-1","DY37-1"],16,151,"10","MT2345T00LZ1"],[["DR37-1","DY37-1"],16,151,"12","MT2345T00LYC"],[["DR37-1","DY37-1"],16,151,"13","MT2345T00LZU"],[["DR37-1","DY37-1"],16,151,"18","MT2346200639"],[["DR37-1","DY37-1"],16,151,"20","MT2346200136"],[["DR37-1","DY37-1"],16,151,"22","72482307250798"],[["DR37-1","DY37-1"],16,151,"40","MT2345XZ09DR"],[["DR37-1","DY37-1"],16,151,"42","MT2347XZ08G3"],[["DU01-2/DG37-2","EP01-2"],17,161,"18","MT2346200588"],[["DU01-2/DG37-2","EP01-2"],17,161,"20","MT2346200130"],[["DU01-2/DG37-2","EP01-2"],17,161,"22","72482307250999"],[["DU01-2/DG37-2","EP01-2"],17,161,"40","MT2345XZ09AX"],[["DU01-2/DG37-2","EP01-2"],17,161,"42","MT2345XZ098J"],[["EV37-2","EF37-2"],18,171,"3","MT2345T00LYF"],[["EV37-2","EF37-2"],18,171,"4","MT2344T00HAP"],[["EV37-2","EF37-2"],18,171,"6","MT2342T00DNV"],[["EV37-2","EF37-2"],18,171,"7","MT2342T00DC5"],[["EV37-2","EF37-2"],18,171,"9","MT2342T00DC3"],[["EV37-2","EF37-2"],18,171,"10","MT2342T00DQ9"],[["EV37-2","EF37-2"],18,171,"12","MT2342T00DCV"],[["EV37-2","EF37-2"],18,171,"13","MT2345T00LXV"],[["EV37-2","EF37-2"],18,171,"18","MT2346200195"],[["EV37-2","EF37-2"],18,171,"20","MT2305201013"],[["EV37-2","EF37-2"],18,171,"22","72482307250744"],[["EV37-2","EF37-2"],18,171,"40","MT2345XZ09H6"],[["EV37-2","EF37-2"],18,171,"42","MT2345XZ09H7"],[["DU01-1/DG37-1","EP01-1"],19,181,"18","MT2346200225"],[["DU01-1/DG37-1","EP01-1"],19,181,"20","MT2346200630"],[["DU01-1/DG37-1","EP01-1"],19,181,"22","72482307250815"],[["DU01-1/DG37-1","EP01-1"],19,181,"25","MT2339XZ0JF8"],[["DU01-1/DG37-1","EP01-1"],19,181,"26","MT2339XZ0JER"],[["DU01-1/DG37-1","EP01-1"],19,181,"28","MT2339XZ0JEZ"],[["DU01-1/DG37-1","EP01-1"],19,181,"29","MT2339XZ0JGA"],[["DU01-1/DG37-1","EP01-1"],19,181,"31","MT2347XZ08GE"],[["DU01-1/DG37-1","EP01-1"],19,181,"33","MT2345XZ09EM"],[["DU01-1/DG37-1","EP01-1"],19,181,"35","MT2345XZ09L7"],[["DU01-1/DG37-1","EP01-1"],19,181,"37","MT2345XZ09ET"],[["DU01-1/DG37-1","EP01-1"],19,181,"40","MT2345XZ0A2H"],[["DU01-1/DG37-1","EP01-1"],19,181,"42","MT2345XZ098D"],[["EV37-1","EF37-1"],20,191,"3","MT2342T00DMU"],[["EV37-1","EF37-1"],20,191,"4","MT2342T00DM8"],[["EV37-1","EF37-1"],20,191,"6","MT2342T00DMT"],[["EV37-1","EF37-1"],20,191,"7","MT2345T00LWU"],[["EV37-1","EF37-1"],20,191,"9","MT2342T00DME"],[["EV37-1","EF37-1"],20,191,"10","MT2345T00LX1"],[["EV37-1","EF37-1"],20,191,"12","MT2345T00LZ0"],[["EV37-1","EF37-1"],20,191,"13","MT2345T00LX8"],[["EV37-1","EF37-1"],20,191,"18","MT2346200604"],[["EV37-1","EF37-1"],20,191,"20","MT2346200248"],[["EV37-1","EF37-1"],20,191,"22","72482307250958"],[["EV37-1","EF37-1"],20,191,"40","MT2347XZ08GC"],[["EV37-1","EF37-1"],20,191,"42","MT2345XZ09JZ"],[["DZ01-2","EW01-2"],21,201,"18","MT2305201193"],[["DZ01-2","EW01-2"],21,201,"20","MT2346200122"],[["DZ01-2","EW01-2"],21,201,"22","72482307250801"],[["DZ01-2","EW01-2"],21,201,"40","MT2345XZ098B"],[["DZ01-2","EW01-2"],21,201,"42","MT2345XZ0A8C"],[["FC37-2","EN37-2"],22,211,"3","MT2342T00DNF"],[["FC37-2","EN37-2"],22,211,"4","MT2342T00DNN"],[["FC37-2","EN37-2"],22,211,"6","MT2344T00H70"],[["FC37-2","EN37-2"],22,211,"7","MT2344T00HKE"],[["FC37-2","EN37-2"],22,211,"9","MT2344T00H7P"],[["FC37-2","EN37-2"],22,211,"10","MT2344T00H8K"],[["FC37-2","EN37-2"],22,211,"12","MT2342T00DCW"],[["FC37-2","EN37-2"],22,211,"13","MT2342T00DBJ"],[["FC37-2","EN37-2"],22,211,"18","MT2346200726"],[["FC37-2","EN37-2"],22,211,"20","MT2346200288"],[["FC37-2","EN37-2"],22,211,"22","72482307250959"],[["FC37-2","EN37-2"],22,211,"40","MT2345XZ09HK"],[["FC37-2","EN37-2"],22,211,"42","MT2347XZ08G5"],[["DZ01-1","EW01-1"],23,221,"18","MT2346200101"],[["DZ01-1","EW01-1"],23,221,"20","MT2346200032"],[["DZ01-1","EW01-1"],23,221,"22","72482307250890"],[["DZ01-1","EW01-1"],23,221,"40","MT2345XZ09AP"],[["DZ01-1","EW01-1"],23,221,"42","MT2345XZ09HH"],[["FC37-1","EN37-1"],24,231,"3","MT2344T00HQG"],[["FC37-1","EN37-1"],24,231,"4","MT2342T00DA9"],[["FC37-1","EN37-1"],24,231,"6","MT2344T00HUL"],[["FC37-1","EN37-1"],24,231,"7","MT2344T00HM1"],[["FC37-1","EN37-1"],24,231,"9","MT2342T00DBF"],[["FC37-1","EN37-1"],24,231,"10","MT2342T00D57"],[["FC37-1","EN37-1"],24,231,"12","MT2342T00DMR"],[["FC37-1","EN37-1"],24,231,"13","MT2342T00DCR"],[["FC37-1","EN37-1"],24,231,"18","MT2346200424"],[["FC37-1","EN37-1"],24,231,"20","MT2346200643"],[["FC37-1","EN37-1"],24,231,"22","72482307250834"],[["FC37-1","EN37-1"],24,231,"40","MT2345XZ0979"],[["FC37-1","EN37-1"],24,231,"42","MT2345XZ09AT"],[["EG01-2","FL01-2"],25,241,"18","MT2346200086"],[["EG01-2","FL01-2"],25,241,"20","MT2346200368"],[["EG01-2","FL01-2"],25,241,"22","72482307250945"],[["EG01-2","FL01-2"],25,241,"40","MT2345XZ098L"],[["EG01-2","FL01-2"],25,241,"42","MT2345XZ097A"],[["FK37-2","FP37-2/DL37-2"],26,251,"3","MT2344T00HGK"],[["FK37-2","FP37-2/DL37-2"],26,251,"4","MT2344T00HKA"],[["FK37-2","FP37-2/DL37-2"],26,251,"6","MT2342T00DMB"],[["FK37-2","FP37-2/DL37-2"],26,251,"7","MT2344T00H8R"],[["FK37-2","FP37-2/DL37-2"],26,251,"9","MT2342T00DCX"],[["FK37-2","FP37-2/DL37-2"],26,251,"10","MT2344T00HLK"],[["FK37-2","FP37-2/DL37-2"],26,251,"12","MT2344T00HLJ"],[["FK37-2","FP37-2/DL37-2"],26,251,"13","MT2345T00LVV"],[["FK37-2","FP37-2/DL37-2"],26,251,"18","MT2305200945"],[["FK37-2","FP37-2/DL37-2"],26,251,"20","MT2305200679"],[["FK37-2","FP37-2/DL37-2"],26,251,"22","72482307250928"],[["FK37-2","FP37-2/DL37-2"],26,251,"40","MT2345XZ0988"],[["FK37-2","FP37-2/DL37-2"],26,251,"42","MT2345XZ09HM"],[["EG01-1","FL01-1"],27,261,"18","MT2305200236"],[["EG01-1","FL01-1"],27,261,"20","MT2346200074"],[["EG01-1","FL01-1"],27,261,"22","72482307250811"],[["EG01-1","FL01-1"],27,261,"40","MT2345XZ09AU"],[["EG01-1","FL01-1"],27,261,"42","MT2345XZ09JX"],[["FK37-1","FP37-1/DL37-1"],28,271,"3","MT2345T00LWW"],[["FK37-1","FP37-1/DL37-1"],28,271,"4","MT2345T00LX5"],[["FK37-1","FP37-1/DL37-1"],28,271,"6","MT2345T00LYA"],[["FK37-1","FP37-1/DL37-1"],28,271,"7","MT2342T00DRB"],[["FK37-1","FP37-1/DL37-1"],28,271,"9","MT2345T00LY8"],[["FK37-1","FP37-1/DL37-1"],28,271,"10","MT2342T00DQ6"],[["FK37-1","FP37-1/DL37-1"],28,271,"12","MT2345T00LZP"],[["FK37-1","FP37-1/DL37-1"],28,271,"13","MT2345T00LYE"],[["FK37-1","FP37-1/DL37-1"],28,271,"18","MT2346200044"],[["FK37-1","FP37-1/DL37-1"],28,271,"20","MT2346200309"],[["FK37-1","FP37-1/DL37-1"],28,271,"22","72482307250792"],[["FK37-1","FP37-1/DL37-1"],28,271,"40","MT2345XZ09AV"],[["FK37-1","FP37-1/DL37-1"],28,271,"42","MT2347XZ08G9"],[["AU39-2","BR39-2"],29,281,"18","MT2305200981"],[["AU39-2","BR39-2"],29,281,"20","MT2305201442"],[["AU39-2","BR39-2"],29,281,"22","22162312263694"],[["AU39-2","BR39-2"],29,281,"25","MT2339XZ0JJ1"],[["AU39-2","BR39-2"],29,281,"26","MT2339XZ0JHJ"],[["AU39-2","BR39-2"],29,281,"28","MT2339XZ0JJC"],[["AU39-2","BR39-2"],29,281,"29","MT2339XZ0JHZ"],[["AU39-2","BR39-2"],29,281,"31","MT2345XZ09DX"],[["AU39-2","BR39-2"],29,281,"33","MT2345XZ09EV"],[["AU39-2","BR39-2"],29,281,"35","MT2345XZ09KX"],[["AU39-2","BR39-2"],29,281,"37","MT2345XZ09ER"],[["AU39-2","BR39-2"],29,281,"40","MT2345XZ09KV"],[["AU39-2","BR39-2"],29,281,"42","MT2347XZ08KK"],[["AR75-2","BN75-2"],29,290,"10","MT2347XZ08KH"],[["AR75-2","BN75-2"],29,290,"11","MT2345XZ09BV"],[["AR75-2","BN75-2"],29,290,"16","MT2347XZ08KF"],[["AR75-2","BN75-2"],29,290,"17","MT2347XZ08KG"],[["AR75-2","BN75-2"],29,290,"20","MT2346200658"],[["AR75-2","BN75-2"],29,290,"22","22162312264100"],[["AR75-2","BN75-2"],29,290,"25","MT2353J0032C"],[["AR75-2","BN75-2"],29,290,"26","MT2353J00328"],[["AR75-2","BN75-2"],29,290,"28","MT2401J00Q1N"],[["AR75-2","BN75-2"],29,290,"29","MT2401J00Q1M"],[["AR75-2","BN75-2"],29,290,"35","MT2347XZ08KM"],[["AR75-2","BN75-2"],29,290,"36","MT2345XZ09EF"],[["AR75-2","BN75-2"],29,290,"41","MT2345XZ09EJ"],[["AR75-2","BN75-2"],29,290,"42","MT2345XZ09EL"],[["AR75-2","BN75-2"],30,291,"3","MT2345T00M08"],[["AR75-2","BN75-2"],30,291,"4","MT2342T00DJT"],[["AR75-2","BN75-2"],30,291,"6","MT2342T00DA5"],[["AR75-2","BN75-2"],30,291,"7","MT2342T00DKZ"],[["AR75-2","BN75-2"],30,291,"9","MT2342T00DJX"],[["AR75-2","BN75-2"],30,291,"10","MT2342T00DKL"],[["AR75-2","BN75-2"],30,291,"12","MT2342T00DA7"],[["AR75-2","BN75-2"],30,291,"13","MT2342T00D9X"],[["AR75-2","BN75-2"],30,291,"18","MT2346200192"],[["AR75-2","BN75-2"],30,291,"20","MT2305201336"],[["AR75-2","BN75-2"],30,291,"22","22162312263858"],[["AR75-2","BN75-2"],30,291,"40","MT2345XZ09Z2"],[["AR75-2","BN75-2"],30,291,"42","MT2345XZ09ZR"],[["AU39-1","BR39-1"],31,301,"18","MT2346200092"],[["AU39-1","BR39-1"],31,301,"20","MT2305201492"],[["AU39-1","BR39-1"],31,301,"22","72482304242548"],[["AU39-1","BR39-1"],31,301,"40","MT2345XZ09Z4"],[["AU39-1","BR39-1"],31,301,"42","MT2345XZ09KN"],[["AR75-1","BN75-1"],32,311,"3","MT2345T00LYU"],[["AR75-1","BN75-1"],32,311,"4","MT2342T00DGW"],[["AR75-1","BN75-1"],32,311,"6","MT2342T00DJQ"],[["AR75-1","BN75-1"],32,311,"7","MT2345T00M2V"],[["AR75-1","BN75-1"],32,311,"9","MT2345T00M2B"],[["AR75-1","BN75-1"],32,311,"10","MT2342T00DDP"],[["AR75-1","BN75-1"],32,311,"12","MT2342T00DFE"],[["AR75-1","BN75-1"],32,311,"13","MT2342T00DJV"],[["AR75-1","BN75-1"],32,311,"18","MT2305201324"],[["AR75-1","BN75-1"],32,311,"20","MT2346200452"],[["AR75-1","BN75-1"],32,311,"22","22162312263864"],[["AR75-1","BN75-1"],32,311,"40","MT2345XZ0A6L"],[["AR75-1","BN75-1"],32,311,"42","MT2345XZ09KW"],[["BB39-2","BY39-2"],33,321,"18","MT2346200607"],[["BB39-2","BY39-2"],33,321,"20","MT2346200237"],[["BB39-2","BY39-2"],33,321,"22","72482307250987"],[["BB39-2","BY39-2"],33,321,"40","MT2345XZ09Z3"],[["BB39-2","BY39-2"],33,321,"42","MT2345XZ09L3"],[["AY75-2","CC75-2"],34,331,"3","MT2345T00M2U"],[["AY75-2","CC75-2"],34,331,"4","MT2345T00LYT"],[["AY75-2","CC75-2"],34,331,"6","MT2344T00HQ4"],[["AY75-2","CC75-2"],34,331,"7","MT2344T00HN7"],[["AY75-2","CC75-2"],34,331,"9","MT2342T00DJR"],[["AY75-2","CC75-2"],34,331,"10","MT2342T00D9L"],[["AY75-2","CC75-2"],34,331,"12","MT2342T00DG9"],[["AY75-2","CC75-2"],34,331,"13","MT2342T00D9V"],[["AY75-2","CC75-2"],34,331,"18","MT2305201206"],[["AY75-2","CC75-2"],34,331,"20","MT2346200236"],[["AY75-2","CC75-2"],34,331,"22","22162312263841"],[["AY75-2","CC75-2"],34,331,"40","MT2345XZ09EK"],[["AY75-2","CC75-2"],34,331,"42","MT2345XZ09EH"],[["BB39-1","BY39-1"],35,341,"18","MT2346200377"],[["BB39-1","BY39-1"],35,341,"20","MT2346200121"],[["BB39-1","BY39-1"],35,341,"22","72482307250889"],[["BB39-1","BY39-1"],35,341,"40","MT2345XZ09ZQ"],[["BB39-1","BY39-1"],35,341,"42","MT2345XZ09Z7"],[["AY75-1","CC75-1"],36,351,"3","MT2342T00DDU"],[["AY75-1","CC75-1"],36,351,"4","MT2342T00DLX"],[["AY75-1","CC75-1"],36,351,"6","MT2342T00DLL"],[["AY75-1","CC75-1"],36,351,"7","MT2342T00D3C"],[["AY75-1","CC75-1"],36,351,"9","MT2342T00D39"],[["AY75-1","CC75-1"],36,351,"10","MT2342T00D5F"],[["AY75-1","CC75-1"],36,351,"12","MT2342T00D3E"],[["AY75-1","CC75-1"],36,351,"13","MT2345T00LZC"],[["AY75-1","CC75-1"],36,351,"18","MT2346200597"],[["AY75-1","CC75-1"],36,351,"20","MT2346200061"],[["AY75-1","CC75-1"],36,351,"22","22162312263561"],[["AY75-1","CC75-1"],36,351,"40","MT2345XZ09KU"],[["AY75-1","CC75-1"],36,351,"42","MT2345XZ09KZ"],[["BJ39-2","CF39-2"],37,361,"18","MT2346200045"],[["BJ39-2","CF39-2"],37,361,"20","MT2346200711"],[["BJ39-2","CF39-2"],37,361,"22","22162312263732"],[["BJ39-2","CF39-2"],37,361,"40","MT2345XZ09Z1"],[["BJ39-2","CF39-2"],37,361,"42","MT2345XZ09EG"],[["BF75-2","CP75-2"],38,371,"3","MT2342T00DM1"],[["BF75-2","CP75-2"],38,371,"4","MT2342T00DB9"],[["BF75-2","CP75-2"],38,371,"6","MT2342T00DJL"],[["BF75-2","CP75-2"],38,371,"7","MT2342T00DA4"],[["BF75-2","CP75-2"],38,371,"9","MT2342T00D9W"],[["BF75-2","CP75-2"],38,371,"10","MT2342T00DLK"],[["BF75-2","CP75-2"],38,371,"12","MT2342T00DLJ"],[["BF75-2","CP75-2"],38,371,"13","MT2342T00DLZ"],[["BF75-2","CP75-2"],38,371,"18","MT2305201274"],[["BF75-2","CP75-2"],38,371,"20","MT2346200022"],[["BF75-2","CP75-2"],38,371,"22","72482307251016"],[["BF75-2","CP75-2"],38,371,"40","MT2345XZ09DW"],[["BF75-2","CP75-2"],38,371,"42","MT2345XZ09DT"],[["CF39-1","BJ39-1"],39,381,"18","MT2342T00DGC"],[["CF39-1","BJ39-1"],39,381,"19","MT2342T00DRA"],[["CF39-1","BJ39-1"],39,381,"20","MT2342T00DRE"],[["CF39-1","BJ39-1"],39,381,"21","MT2345T00LZY"],[["CF39-1","BJ39-1"],39,381,"23","MT2344T00HQZ"],[["CF39-1","BJ39-1"],39,381,"24","MT2342T00D9H"],[["CF39-1","BJ39-1"],39,381,"25","MT2342T00DA2"],[["CF39-1","BJ39-1"],39,381,"26","MT2345T00LW7"],[["CF39-1","BJ39-1"],39,381,"30","MT2345T00LVN"],[["CF39-1","BJ39-1"],39,381,"31","MT2342T00DW3"],[["CF39-1","BJ39-1"],39,381,"32","MT2344T00GVV"],[["CF39-1","BJ39-1"],39,381,"33","MT2344T00HUY"],[["CF39-1","BJ39-1"],39,381,"35","MT2344T00HMZ"],[["CF39-1","BJ39-1"],39,381,"36","MT2342T00DUH"],[["CF39-1","BJ39-1"],39,381,"37","MT2342T00DUZ"],[["CF39-1","BJ39-1"],39,381,"38","MT2342T00DUW"],[["CP75-1","BJ39-1"],39,382,"18","MT2344T00HMR"],[["CP75-1","BJ39-1"],39,382,"19","MT2344T00HM4"],[["CP75-1","BJ39-1"],39,382,"20","MT2345T00LVR"],[["CP75-1","BJ39-1"],39,382,"21","MT2345T00LVJ"],[["CP75-1","BJ39-1"],39,382,"23","MT2344T00HHV"],[["CP75-1","BJ39-1"],39,382,"24","MT2345T00LVH"],[["CP75-1","BJ39-1"],39,382,"25","MT2342T00D3J"],[["CP75-1","BJ39-1"],39,382,"26","MT2342T00DB1"],[["CP75-1","BJ39-1"],39,382,"30","MT2344T00HJX"],[["CP75-1","BJ39-1"],39,382,"31","MT2342T00DUG"],[["CP75-1","BJ39-1"],39,382,"32","MT2342T00DUJ"],[["CP75-1","BJ39-1"],39,382,"33","MT2344T00HTV"],[["CP75-1","BJ39-1"],39,382,"35","MT2342T00D9Q"],[["CP75-1","BJ39-1"],39,382,"36","MT2342T00DV6"],[["CP75-1","BJ39-1"],39,382,"37","MT2342T00DUY"],[["CP75-1","BJ39-1"],39,382,"38","MT2342T00DUK"],[["BF75-1","BJ39-1"],39,383,"18","MT2342T00DHZ"],[["BF75-1","BJ39-1"],39,383,"19","MT2342T00DEQ"],[["BF75-1","BJ39-1"],39,383,"20","MT2342T00DNT"],[["BF75-1","BJ39-1"],39,383,"21","MT2342T00DFY"],[["BF75-1","BJ39-1"],39,383,"23","MT2342T00DPK"],[["BF75-1","BJ39-1"],39,383,"24","MT2344T00HL4"],[["BF75-1","BJ39-1"],39,383,"25","MT2344T00HPK"],[["BF75-1","BJ39-1"],39,383,"26","MT2342T00D9J"],[["BF75-1","BJ39-1"],39,383,"30","MT2342T00D9R"],[["BF75-1","BJ39-1"],39,383,"31","MT2342T00DG7"],[["BF75-1","BJ39-1"],39,383,"32","MT2344T00HMQ"],[["BF75-1","BJ39-1"],39,383,"33","MT2345T00LVQ"],[["BF75-1","BJ39-1"],39,383,"35","MT2344T00HNJ"],[["BF75-1","BJ39-1"],39,383,"36","MT2344T00HUW"],[["BF75-1","BJ39-1"],39,383,"37","MT2342T00DGF"],[["BF75-1","BJ39-1"],39,383,"38","MT2342T00DAQ"],[["CP75-1","BF75-1"],40,391,"10","26901001754"],[["CP75-1","BF75-1"],40,391,"14","FGN232704CQ"],[["CP75-1","BF75-1"],40,391,"16","FGN232502U1"],[["CP75-1","BF75-1"],40,391,"20","MT2346200021"],[["CP75-1","BF75-1"],40,391,"22","22162312264111"],[["CP75-1","BJ39-1"],40,392,"14","FGN232701G0"],[["CP75-1","BJ39-1"],40,392,"16","FGN232704D2"],[["CP75-1","BJ39-1"],40,392,"20","MT2346200033"],[["CP75-1","BJ39-1"],40,392,"22","22162312263558"],[["CF39-1","CP75-1"],40,393,"8","MT2345XZ09DQ"],[["CF39-1","CP75-1"],40,393,"10","MT2345XZ09DK"],[["CF39-1","CP75-1"],40,393,"16","MT2347XZ08G7"],[["CF39-1","CP75-1"],40,393,"18","MT2347XZ08GD"],[["CF39-1","CP75-1"],40,393,"20","MT2346200113"],[["CF39-1","CP75-1"],40,393,"22","22162312263771"],[["CF39-1","CP75-1"],40,393,"24","MT2345XZ0JMC"],[["CF39-1","CP75-1"],40,393,"30","MXQ2380DHM"],[["CF39-1","CP75-1"],40,393,"34","MT2345XZ09L8"],[["CF39-1","CP75-1"],40,393,"36","MT2345XZ09KY"],[["CF39-1","CP75-1"],40,393,"38","MT2339XZ0JJA"],[["CF39-1","CP75-1"],40,393,"42","MT2345XZ09H0"],[["CF39-1","BJ39-1"],40,394,"8","MT2345XZ09GW"],[["CF39-1","BJ39-1"],40,394,"10","MT2345XZ09HA"],[["CF39-1","BJ39-1"],40,394,"16","MT2345XZ097F"],[["CF39-1","BJ39-1"],40,394,"18","MT2345XZ09EN"],[["CF39-1","BJ39-1"],40,394,"20","MT2346200015"],[["CF39-1","BJ39-1"],40,394,"22","22162312263546"],[["CF39-1","BJ39-1"],40,394,"24","MT2345XZ0JMQ"],[["CF39-1","BJ39-1"],40,394,"34","MT2347XZ08KJ"],[["CF39-1","BJ39-1"],40,394,"36","MT2345XZ09L4"],[["CF39-1","BJ39-1"],40,394,"38","MT2339XZ0JHQ"],[["CF39-1","BJ39-1"],40,394,"42","MT2345XZ0A01"],[["CP75-1","BF75-1"],40,395,"12","MT2345XZ0A05"],[["CP75-1","BF75-1"],40,395,"14","MT2345XZ09KT"],[["CP75-1","BF75-1"],40,395,"16","MT2345XZ0A06"],[["CP75-1","BF75-1"],40,395,"18","MT2345XZ0A00"],[["CP75-1","BF75-1"],40,395,"20","MT2346200062"],[["CP75-1","BF75-1"],40,395,"22","22162312263711"],[["CP75-1","BF75-1"],40,395,"36","MT2345XZ0A07"],[["CP75-1","BF75-1"],40,395,"38","MT2345XZ0A02"],[["CP75-1","BF75-1"],40,395,"40","MT2345XZ09HB"],[["CP75-1","BF75-1"],40,395,"42","MT2345XZ0978"],[["CP75-1","BJ39-1"],40,396,"12","MT2347XZ08G8"],[["CP75-1","BJ39-1"],40,396,"14","MT2345XZ09GY"],[["CP75-1","BJ39-1"],40,396,"16","MT2345XZ09L0"],[["CP75-1","BJ39-1"],40,396,"18","MT2345XZ09GX"],[["CP75-1","BJ39-1"],40,396,"20","MT2346200553"],[["CP75-1","BJ39-1"],40,396,"22","22162312263870"],[["CP75-1","BJ39-1"],40,396,"36","MT2345XZ09ZT"],[["CP75-1","BJ39-1"],40,396,"38","MT2347XZ08KL"],[["CP75-1","BJ39-1"],40,396,"40","MT2347XZ08G6"],[["CP75-1","BJ39-1"],40,396,"42","MT2345XZ09ZY"],[["CF39-1","BF75-1"],40,398,"18","MT2342T00DAA"],[["CF39-1","BF75-1"],40,398,"19","MT2342T00DFN"],[["CF39-1","BF75-1"],40,398,"20","MT2342T00DEX"],[["CF39-1","BF75-1"],40,398,"21","MT2344T00HNN"],[["CF39-1","BF75-1"],40,398,"23","MT2342T00D9T"],[["CF39-1","BF75-1"],40,398,"24","MT2344T00HPQ"],[["CF39-1","BF75-1"],40,398,"25","MT2344T00HJZ"],[["CF39-1","BF75-1"],40,398,"26","MT2342T00DRC"],[["CF39-1","BF75-1"],40,398,"30","MT2342T00DA0"],[["CF39-1","BF75-1"],40,398,"31","MT2342T00DAN"],[["CF39-1","BF75-1"],40,398,"32","MT2342T00DB8"],[["CF39-1","BF75-1"],40,398,"33","MT2342T00DHR"],[["CF39-1","BF75-1"],40,398,"35","MT2342T00D9Y"],[["CF39-1","BF75-1"],40,398,"36","MT2342T00DE1"],[["CF39-1","BF75-1"],40,398,"37","MT2342T00D3A"],[["CF39-1","BF75-1"],40,398,"38","MT2342T00DAP"],[["CF39-1","CF75-1"],40,399,"18","MT2342T00DFM"],[["CF39-1","CF75-1"],40,399,"19","MT2342T00DGD"],[["CF39-1","CF75-1"],40,399,"20","MT2342T00DF4"],[["CF39-1","CF75-1"],40,399,"21","MT2344T00HK8"],[["CF39-1","CF75-1"],40,399,"23","MT2344T00HNQ"],[["CF39-1","CF75-1"],40,399,"24","MT2342T00DET"],[["CF39-1","CF75-1"],40,399,"25","MT2342T00DE2"],[["CF39-1","CF75-1"],40,399,"26","MT2342T00DP3"],[["CF39-1","CF75-1"],40,399,"30","MT2345T00LZA"],[["CF39-1","CF75-1"],40,399,"31","MT2342T00DT7"],[["CF39-1","CF75-1"],40,399,"32","MT2345T00LZ9"],[["CF39-1","CF75-1"],40,399,"33","MT2342T00D2W"],[["CF39-1","CF75-1"],40,399,"35","MT2342T00DGQ"],[["CF39-1","CF75-1"],40,399,"36","MT2345T00M09"],[["CF39-1","CF75-1"],40,399,"37","MT2344T00HVB"],[["CF39-1","CF75-1"],40,399,"38","MT2344T00HPE"],[["CF39-1","BJ39-1"],40,400,"18","MT2344T00HNP"],[["CF39-1","BJ39-1"],40,400,"19","MT2342T00D9G"],[["CF39-1","BJ39-1"],40,400,"20","MT2342T00DE4"],[["CF39-1","BJ39-1"],40,400,"21","MT2344T00HNZ"],[["CF39-1","BJ39-1"],40,400,"23","MT2342T00DEL"],[["CF39-1","BJ39-1"],40,400,"24","MT2342T00D9K"],[["CF39-1","BJ39-1"],40,400,"25","MT2342T00D9M"],[["CF39-1","BJ39-1"],40,400,"26","MT2342T00DA1"],[["CF39-1","BJ39-1"],40,400,"30","MT2342T00DPF"],[["CF39-1","BJ39-1"],40,400,"31","MT2342T00DF3"],[["CF39-1","BJ39-1"],40,400,"32","MT2342T00DRZ"],[["CF39-1","BJ39-1"],40,400,"33","MT2342T00DHA"],[["CF39-1","BJ39-1"],40,400,"35","MT2342T00DGE"],[["CF39-1","BJ39-1"],40,400,"36","MT2342T00DRJ"],[["CF39-1","BJ39-1"],40,400,"37","MT2344T00HVJ"],[["CF39-1","BJ39-1"],40,400,"38","MT2344T00HVH"],[["DS39-2","EW39-2"],41,401,"18","MT2344T00HBY"],[["DS39-2","EW39-2"],41,401,"19","MT2344T00HBG"],[["DS39-2","EW39-2"],41,401,"20","MT2342T00DAT"],[["DS39-2","EW39-2"],41,401,"21","MT2342T00DEW"],[["DS39-2","EW39-2"],41,401,"23","MT2342T00DE6"],[["DS39-2","EW39-2"],41,401,"24","MT2344T00HRP"],[["DS39-2","EW39-2"],41,401,"25","MT2342T00DTN"],[["DS39-2","EW39-2"],41,401,"26","MT2344T00HB7"],[["DS39-2","EW39-2"],41,401,"30","MT2342T00DAX"],[["DS39-2","EW39-2"],41,401,"31","MT2342T00DB7"],[["DS39-2","EW39-2"],41,401,"32","MT2342T00DER"],[["DS39-2","EW39-2"],41,401,"33","MT2342T00DDM"],[["DS39-2","EW39-2"],41,401,"35","MT2342T00DAM"],[["DS39-2","EW39-2"],41,401,"36","MT2342T00DDZ"],[["DS39-2","EW39-2"],41,401,"37","MT2342T00DEV"],[["DS39-2","EW39-2"],41,401,"38","MT2342T00D7C"],[["DS39-2","EN75-2"],41,402,"18","MT2344T00HRL"],[["DS39-2","EN75-2"],41,402,"19","MT2344T00HRH"],[["DS39-2","EN75-2"],41,402,"20","MT2344T00HB3"],[["DS39-2","EN75-2"],41,402,"21","MT2344T00HAN"],[["DS39-2","EN75-2"],41,402,"23","MT2342T00DQN"],[["DS39-2","EN75-2"],41,402,"24","MT2342T00DTW"],[["DS39-2","EN75-2"],41,402,"25","MT2342T00DUD"],[["DS39-2","EN75-2"],41,402,"26","MT2342T00DB2"],[["DS39-2","EN75-2"],41,402,"30","MT2342T00DB3"],[["DS39-2","EN75-2"],41,402,"31","MT2342T00DAK"],[["DS39-2","EN75-2"],41,402,"32","MT2342T00DAV"],[["DS39-2","EN75-2"],41,402,"33","MT2342T00DDB"],[["DS39-2","EN75-2"],41,402,"35","MT2342T00DAR"],[["DS39-2","EN75-2"],41,402,"36","MT2342T00DE7"],[["DS39-2","EN75-2"],41,402,"37","MT2342T00DBL"],[["DS39-2","EN75-2"],41,402,"38","MT2342T00DMJ"],[["DS39-2","CX75-2"],41,403,"18","MT2345T00LLF"],[["DS39-2","CX75-2"],41,403,"19","MT2345T00LTF"],[["DS39-2","CX75-2"],41,403,"20","MT2342T00DMH"],[["DS39-2","CX75-2"],41,403,"21","MT2342T00D7A"],[["DS39-2","CX75-2"],41,403,"23","MT2345T00L9V"],[["DS39-2","CX75-2"],41,403,"24","MT2339T00665"],[["DS39-2","CX75-2"],41,403,"25","MT2345T00LRH"],[["DS39-2","CX75-2"],41,403,"26","MT2342T00DNB"],[["DS39-2","CX75-2"],41,403,"30","MT2342T00DJK"],[["DS39-2","CX75-2"],41,403,"31","MT2340T00JHG"],[["DS39-2","CX75-2"],41,403,"32","MT2345T00M23"],[["DS39-2","CX75-2"],41,403,"33","MT2342T00D6Z"],[["DS39-2","CX75-2"],41,403,"35","MT2341T00B7Y"],[["DS39-2","CX75-2"],41,403,"36","MT2342T00DN9"],[["DS39-2","CX75-2"],41,403,"37","MT2345T00LPZ"],[["DS39-2","CX75-2"],41,403,"38","MT2345T00LRR"],[["CX75-2","EW39-2"],41,404,"18","MT2342T00D8X"],[["CX75-2","EW39-2"],41,404,"19","MT2345T00M2Y"],[["CX75-2","EW39-2"],41,404,"20","MT2342T00D95"],[["CX75-2","EW39-2"],41,404,"21","MT2345T00M20"],[["CX75-2","EW39-2"],41,404,"23","MT2342T00D8U"],[["CX75-2","EW39-2"],41,404,"24","MT2345T00M1W"],[["CX75-2","EW39-2"],41,404,"25","MT2342T00DCN"],[["CX75-2","EW39-2"],41,404,"26","MT2342T00D9B"],[["CX75-2","EW39-2"],41,404,"30","MT2342T00DCF"],[["CX75-2","EW39-2"],41,404,"31","MT2345T00M0N"],[["CX75-2","EW39-2"],41,404,"32","MT2342T00DHY"],[["CX75-2","EW39-2"],41,404,"33","MT2342T00DCB"],[["CX75-2","EW39-2"],41,404,"35","MT2342T00DJE"],[["CX75-2","EW39-2"],41,404,"36","MT2345T00M1P"],[["CX75-2","EW39-2"],41,404,"37","MT2342T00DCY"],[["CX75-2","EW39-2"],41,404,"38","MT2342T00DCG"],[["CX75-2","DS39-2"],41,405,"18","MT2342T00DBP"],[["CX75-2","DS39-2"],41,405,"19","MT2344T00HPU"],[["CX75-2","DS39-2"],41,405,"20","MT2345T00LWQ"],[["CX75-2","DS39-2"],41,405,"21","MT2345T00LVM"],[["CX75-2","DS39-2"],41,405,"23","MT2342T00D3U"],[["CX75-2","DS39-2"],41,405,"24","MT2345T00LW9"],[["CX75-2","DS39-2"],41,405,"25","MT2340T00JJF"],[["CX75-2","DS39-2"],41,405,"26","MT2344T00HPW"],[["CX75-2","DS39-2"],41,405,"30","MT2344T00HL0"],[["CX75-2","DS39-2"],41,405,"31","MT2344T00HK4"],[["CX75-2","DS39-2"],41,405,"32","MT2344T00HLW"],[["CX75-2","DS39-2"],41,405,"33","MT2344T00HH4"],[["CX75-2","DS39-2"],41,405,"35","MT2344T00HNT"],[["CX75-2","DS39-2"],41,405,"36","MT2342T00D8V"],[["CX75-2","DS39-2"],41,405,"37","MT2342T00DD2"],[["CX75-2","DS39-2"],41,405,"38","MT2342T00DD0"],[["CX75-2","EN75-2"],41,406,"18","MT2342T00D5U"],[["CX75-2","EN75-2"],41,406,"19","MT2344T00HPV"],[["CX75-2","EN75-2"],41,406,"20","MT2344T00HLL"],[["CX75-2","EN75-2"],41,406,"21","MT2342T00DKE"],[["CX75-2","EN75-2"],41,406,"23","MT2344T00HRD"],[["CX75-2","EN75-2"],41,406,"24","MT2344T00HNY"],[["CX75-2","EN75-2"],41,406,"25","MT2345T00LWV"],[["CX75-2","EN75-2"],41,406,"26","MT2345T00LWG"],[["CX75-2","EN75-2"],41,406,"30","MT2345T00LWP"],[["CX75-2","EN75-2"],41,406,"31","MT2344T00HPR"],[["CX75-2","EN75-2"],41,406,"32","MT2344T00HP0"],[["CX75-2","EN75-2"],41,406,"33","MT2344T00HR1"],[["CX75-2","EN75-2"],41,406,"35","MT2344T00HNW"],[["CX75-2","EN75-2"],41,406,"36","MT2340T00JJL"],[["CX75-2","EN75-2"],41,406,"37","MT2342T00D8W"],[["CX75-2","EN75-2"],41,406,"38","MT2342T00D46"],[["DS39-2","EN95-2"],41,407,"18","MT2344T00HPJ"],[["DS39-2","EN95-2"],41,407,"19","MT2345T00LWT"],[["DS39-2","EN95-2"],41,407,"20","MT2342T00DVD"],[["DS39-2","EN95-2"],41,407,"21","MT2342T00DPM"],[["DS39-2","EN95-2"],41,407,"23","MT2342T00DG8"],[["DS39-2","EN95-2"],41,407,"24","MT2344T00GVY"],[["DS39-2","EN95-2"],41,407,"25","MT2342T00DPL"],[["DS39-2","EN95-2"],41,407,"26","MT2342T00DMQ"],[["DS39-2","EN95-2"],41,407,"30","MT2345T00LVK"],[["DS39-2","EN95-2"],41,407,"31","MT2345T00LWZ"],[["DS39-2","EN95-2"],41,407,"32","MT2345T00LVX"],[["DS39-2","EN95-2"],41,407,"33","MT2344T00GYH"],[["DS39-2","EN95-2"],41,407,"35","MT2342T00DGG"],[["DS39-2","EN95-2"],41,407,"36","MT2345T00LWB"],[["DS39-2","EN95-2"],41,407,"37","MT2345T00LWE"],[["DS39-2","EN95-2"],41,407,"38","MT2344T00HMN"],[["DS39-2","CX75-2"],41,408,"18","MT2342T00DP4"],[["DS39-2","CX75-2"],41,408,"19","MT2342T00DK7"],[["DS39-2","CX75-2"],41,408,"20","MT2342T00DBA"],[["DS39-2","CX75-2"],41,408,"21","MT2342T00D49"],[["DS39-2","CX75-2"],41,408,"23","MT2342T00D5E"],[["DS39-2","CX75-2"],41,408,"24","MT2342T00DJ1"],[["DS39-2","CX75-2"],41,408,"25","MT2342T00DHG"],[["DS39-2","CX75-2"],41,408,"26","MT2342T00DHD"],[["DS39-2","CX75-2"],41,408,"30","MT2342T00DDC"],[["DS39-2","CX75-2"],41,408,"31","MT2344T00HR9"],[["DS39-2","CX75-2"],41,408,"32","MT2342T00DRG"],[["DS39-2","CX75-2"],41,408,"33","MT2342T00DK2"],[["DS39-2","CX75-2"],41,408,"35","MT2342T00D2K"],[["DS39-2","CX75-2"],41,408,"36","MT2342T00DKR"],[["DS39-2","CX75-2"],41,408,"37","MT2342T00DR2"],[["DS39-2","CX75-2"],41,408,"38","MT2344T00HRF"],[["CX75-2","EW39-2"],41,409,"18","MT2344T00HP4"],[["CX75-2","EW39-2"],41,409,"19","MT2344T00HR8"],[["CX75-2","EW39-2"],41,409,"20","MT2345T00LMV"],[["CX75-2","EW39-2"],41,409,"21","MT2342T00D3Q"],[["CX75-2","EW39-2"],41,409,"23","MT2342T00DR4"],[["CX75-2","EW39-2"],41,409,"24","MT2342T00DFZ"],[["CX75-2","EW39-2"],41,409,"25","MT2344T00HLV"],[["CX75-2","EW39-2"],41,409,"26","MT2342T00DDJ"],[["CX75-2","EW39-2"],41,409,"30","MT2342T00D5Y"],[["CX75-2","EW39-2"],41,409,"31","MT2342T00DT1"],[["CX75-2","EW39-2"],41,409,"32","MT2342T00DKD"],[["CX75-2","EW39-2"],41,409,"33","MT2342T00DD5"],[["CX75-2","EW39-2"],41,409,"35","MT2345T00LPU"],[["CX75-2","EW39-2"],41,409,"36","MT2342T00DDH"],[["CX75-2","EW39-2"],41,409,"37","MT2344T00HQ5"],[["CX75-2","EW39-2"],41,409,"38","MT2342T00DK1"],[["DS39-2","EN75-2"],42,412,"18","MT2344T00HJF"],[["DS39-2","EN75-2"],42,412,"19","MT2342T00DRD"],[["DS39-2","EN75-2"],42,412,"20","MT2344T00HG2"],[["DS39-2","EN75-2"],42,412,"21","MT2344T00HGZ"],[["DS39-2","EN75-2"],42,412,"23","MT2344T00HH1"],[["DS39-2","EN75-2"],42,412,"24","MT2342T00DCE"],[["DS39-2","EN75-2"],42,412,"25","MT2342T00DLG"],[["DS39-2","EN75-2"],42,412,"26","MT2344T00HB6"],[["DS39-2","EN75-2"],42,412,"30","MT2344T00HG9"],[["DS39-2","EN75-2"],42,412,"31","MT2344T00H9T"],[["DS39-2","EN75-2"],42,412,"32","MT2344T00HAJ"],[["DS39-2","EN75-2"],42,412,"33","MT2342T00DQ3"],[["DS39-2","EN75-2"],42,412,"35","MT2342T00DQK"],[["DS39-2","EN75-2"],42,412,"36","MT2342T00DLC"],[["DS39-2","EN75-2"],42,412,"37","MT2342T00DM2"],[["DS39-2","EN75-2"],42,412,"38","MT2342T00D4U"],[["EN75-2","EW39-2"],42,413,"18","MT2342T00D63"],[["EN75-2","EW39-2"],42,413,"19","MT2344T00HQ9"],[["EN75-2","EW39-2"],42,413,"20","MT2342T00DD9"],[["EN75-2","EW39-2"],42,413,"21","MT2342T00DD1"],[["EN75-2","EW39-2"],42,413,"23","MT2342T00DFW"],[["EN75-2","EW39-2"],42,413,"24","MT2342T00DF5"],[["EN75-2","EW39-2"],42,413,"25","MT2342T00DF6"],[["EN75-2","EW39-2"],42,413,"26","MT2342T00DFJ"],[["EN75-2","EW39-2"],42,413,"30","MT2342T00DFK"],[["EN75-2","EW39-2"],42,413,"31","MT2342T00D94"],[["EN75-2","EW39-2"],42,413,"32","MT2342T00DFL"],[["EN75-2","EW39-2"],42,413,"33","MT2342T00DGY"],[["EN75-2","EW39-2"],42,413,"35","MT2342T00DD3"],[["EN75-2","EW39-2"],42,413,"36","MT2342T00DEE"],[["EN75-2","EW39-2"],42,413,"37","MT2342T00DDD"],[["EN75-2","EW39-2"],42,413,"38","MT2342T00DHP"],[["DS39-2","EW39-2"],42,414,"18","MT2342T00D66"],[["DS39-2","EW39-2"],42,414,"19","MT2342T00D5K"],[["DS39-2","EW39-2"],42,414,"20","MT2342T00D59"],[["DS39-2","EW39-2"],42,414,"21","MT2342T00D6B"],[["DS39-2","EW39-2"],42,414,"23","MT2344T00HQ2"],[["DS39-2","EW39-2"],42,414,"24","MT2342T00D5Z"],[["DS39-2","EW39-2"],42,414,"25","MT2344T00HRN"],[["DS39-2","EW39-2"],42,414,"26","MT2342T00DF2"],[["DS39-2","EW39-2"],42,414,"30","MT2342T00D4K"],[["DS39-2","EW39-2"],42,414,"31","MT2342T00DNC"],[["DS39-2","EW39-2"],42,414,"32","MT2342T00DG2"],[["DS39-2","EW39-2"],42,414,"33","MT2342T00DH9"],[["DS39-2","EW39-2"],42,414,"35","MT2344T00HQ7"],[["DS39-2","EW39-2"],42,414,"36","MT2342T00DGX"],[["DS39-2","EW39-2"],42,414,"37","MT2342T00DH6"],[["DS39-2","EW39-2"],42,414,"38","MT2342T00DCK"],[["CX75-2","EN75-2"],42,415,"18","MT2344T00H9X"],[["CX75-2","EN75-2"],42,415,"19","MT2344T00HMY"],[["CX75-2","EN75-2"],42,415,"20","MT2342T00DRR"],[["CX75-2","EN75-2"],42,415,"21","MT2342T00DL3"],[["CX75-2","EN75-2"],42,415,"23","MT2342T00DRW"],[["CX75-2","EN75-2"],42,415,"24","MT2344T00HLY"],[["CX75-2","EN75-2"],42,415,"25","MT2342T00DMW"],[["CX75-2","EN75-2"],42,415,"26","MT2342T00DN8"],[["CX75-2","EN75-2"],42,415,"30","MT2342T00DLN"],[["CX75-2","EN75-2"],42,415,"31","MT2342T00DMX"],[["CX75-2","EN75-2"],42,415,"32","MT2342T00D42"],[["CX75-2","EN75-2"],42,415,"33","MT2345T00LRQ"],[["CX75-2","EN75-2"],42,415,"35","MT2342T00DTH"],[["CX75-2","EN75-2"],42,415,"36","MT2345T00LQL"],[["CX75-2","EN75-2"],42,415,"37","MT2344T00HPH"],[["CX75-2","EN75-2"],42,415,"38","MT2342T00D86"],[["DS39-2","EN75-2"],42,416,"18","MT2344T00HB1"],[["DS39-2","EN75-2"],42,416,"19","MT2342T00DCL"],[["DS39-2","EN75-2"],42,416,"20","MT2342T00DN7"],[["DS39-2","EN75-2"],42,416,"21","MT2342T00D7D"],[["DS39-2","EN75-2"],42,416,"23","MT2342T00D6Y"],[["DS39-2","EN75-2"],42,416,"24","MT2342T00D6R"],[["DS39-2","EN75-2"],42,416,"25","MT2344T00HM0"],[["DS39-2","EN75-2"],42,416,"26","MT2344T00HGV"],[["DS39-2","EN75-2"],42,416,"30","MT2345T00M3C"],[["DS39-2","EN75-2"],42,416,"31","MT2342T00D6A"],[["DS39-2","EN75-2"],42,416,"32","MT2344T00HQ8"],[["DS39-2","EN75-2"],42,416,"33","MT2344T00HRM"],[["DS39-2","EN75-2"],42,416,"35","MT2344T00HC6"],[["DS39-2","EN75-2"],42,416,"36","MT2344T00HAX"],[["DS39-2","EN75-2"],42,416,"37","MT2342T00D60"],[["DS39-2","EN75-2"],42,416,"38","MT2342T00D65"],[["EW39-2","EN75-2"],42,417,"18","MT2342T00D8R"],[["EW39-2","EN75-2"],42,417,"19","MT2345T00M1N"],[["EW39-2","EN75-2"],42,417,"20","MT2342T00D8P"],[["EW39-2","EN75-2"],42,417,"21","MT2342T00D98"],[["EW39-2","EN75-2"],42,417,"23","MT2345T00M3A"],[["EW39-2","EN75-2"],42,417,"24","MT2345T00M1R"],[["EW39-2","EN75-2"],42,417,"25","MT2342T00D9E"],[["EW39-2","EN75-2"],42,417,"26","MT2342T00D45"],[["EW39-2","EN75-2"],42,417,"30","MT2342T00DL7"],[["EW39-2","EN75-2"],42,417,"31","MT2344T00H9Y"],[["EW39-2","EN75-2"],42,417,"32","MT2344T00H9E"],[["EW39-2","EN75-2"],42,417,"33","MT2344T00HA0"],[["EW39-2","EN75-2"],42,417,"35","MT2342T00DQM"],[["EW39-2","EN75-2"],42,417,"36","MT2342T00DLH"],[["EW39-2","EN75-2"],42,417,"37","MT2342T00DH4"],[["EW39-2","EN75-2"],42,417,"38","MT2344T00HBW"],[["CX75-2","EW39-2"],42,418,"18","MT2345T00M31"],[["CX75-2","EW39-2"],42,418,"19","MT2342T00D6W"],[["CX75-2","EW39-2"],42,418,"20","MT2342T00DMZ"],[["CX75-2","EW39-2"],42,418,"21","MT2345T00M21"],[["CX75-2","EW39-2"],42,418,"23","MT2342T00DAY"],[["CX75-2","EW39-2"],42,418,"24","MT2342T00DAL"],[["CX75-2","EW39-2"],42,418,"25","MT2342T00D73"],[["CX75-2","EW39-2"],42,418,"26","MT2342T00D7G"],[["CX75-2","EW39-2"],42,418,"30","MT2342T00D6V"],[["CX75-2","EW39-2"],42,418,"31","MT2342T00DNH"],[["CX75-2","EW39-2"],42,418,"32","MT2342T00D61"],[["CX75-2","EW39-2"],42,418,"33","MT2342T00D5L"],[["CX75-2","EW39-2"],42,418,"35","MT2342T00D70"],[["CX75-2","EW39-2"],42,418,"36","MT2345T00LTP"],[["CX75-2","EW39-2"],42,418,"37","MT2344T00HH0"],[["CX75-2","EW39-2"],42,418,"38","MT2344T00HR0"],[["EN75-2","EW39-2"],42,419,"18","MT2342T00DTQ"],[["EN75-2","EW39-2"],42,419,"19","MT2344T00HJE"],[["EN75-2","EW39-2"],42,419,"20","MT2344T00HK2"],[["EN75-2","EW39-2"],42,419,"21","MT2344T00H9L"],[["EN75-2","EW39-2"],42,419,"23","MT2342T00DU2"],[["EN75-2","EW39-2"],42,419,"24","MT2342T00DLT"],[["EN75-2","EW39-2"],42,419,"25","MT2342T00DUB"],[["EN75-2","EW39-2"],42,419,"26","MT2342T00D8B"],[["EN75-2","EW39-2"],42,419,"30","MT2344T00HH7"],[["EN75-2","EW39-2"],42,419,"31","MT2342T00DDL"],[["EN75-2","EW39-2"],42,419,"32","MT2342T00DDN"],[["EN75-2","EW39-2"],42,419,"33","MT2342T00DCD"],[["EN75-2","EW39-2"],42,419,"35","MT2342T00DHM"],[["EN75-2","EW39-2"],42,419,"36","MT2342T00DRN"],[["EN75-2","EW39-2"],42,419,"37","MT2342T00DQ7"],[["EN75-2","EW39-2"],42,419,"38","MT2344T00HB4"],[["DS39-2","EW39-2"],42,420,"18","MT2342T00DCM"],[["DS39-2","EW39-2"],42,420,"19","MT2342T00DT8"],[["DS39-2","EW39-2"],42,420,"20","MT2342T00DRP"],[["DS39-2","EW39-2"],42,420,"21","MT2344T00HL2"],[["DS39-2","EW39-2"],42,420,"23","MT2342T00DCC"],[["DS39-2","EW39-2"],42,420,"24","MT2342T00DDA"],[["DS39-2","EW39-2"],42,420,"25","MT2344T00HL8"],[["DS39-2","EW39-2"],42,420,"26","MT2344T00HRK"],[["DS39-2","EW39-2"],42,420,"30","MT2344T00HRG"],[["DS39-2","EW39-2"],42,420,"31","MT2344T00HC8"],[["DS39-2","EW39-2"],42,420,"32","MT2344T00HAV"],[["DS39-2","EW39-2"],42,420,"33","MT2342T00DD8"],[["DS39-2","EW39-2"],42,420,"35","MT2342T00D2Z"],[["DS39-2","EW39-2"],42,420,"36","MT2342T00DFX"],[["DS39-2","EW39-2"],42,420,"37","MT2344T00HAR"],[["DS39-2","EW39-2"],42,420,"38","MT2344T00HC1"],[["DS39-1","EW39-1"],43,421,"18","MT2346200517"],[["DS39-1","EW39-1"],43,421,"20","MT2346200244"],[["DS39-1","EW39-1"],43,421,"22","72482307250749"],[["DS39-1","EW39-1"],43,421,"25","MT2339XZ0JHW"],[["DS39-1","EW39-1"],43,421,"26","MT2339XZ0JGF"],[["DS39-1","EW39-1"],43,421,"28","MT2339XZ0JFA"],[["DS39-1","EW39-1"],43,421,"29","MT2339XZ0JGV"],[["DS39-1","EW39-1"],43,421,"31","MT2345XZ09DV"],[["DS39-1","EW39-1"],43,421,"33","MT2345XZ09EE"],[["DS39-1","EW39-1"],43,421,"35","MT2345XZ09H4"],[["DS39-1","EW39-1"],43,421,"37","MT2345XZ09DU"],[["DS39-1","EW39-1"],43,421,"40","MT2345XZ09GZ"],[["DS39-1","EW39-1"],43,421,"42","MT2345XZ09KL"],[["CX75-1","EN75-1"],44,431,"3","MT2342T00D5V"],[["CX75-1","EN75-1"],44,431,"4","MT2342T00DUL"],[["CX75-1","EN75-1"],44,431,"6","MT2345T00LQF"],[["CX75-1","EN75-1"],44,431,"7","MT2345T00LT1"],[["CX75-1","EN75-1"],44,431,"9","MT2342T00D5W"],[["CX75-1","EN75-1"],44,431,"10","MT2342T00DKU"],[["CX75-1","EN75-1"],44,431,"12","MT2344T00HUT"],[["CX75-1","EN75-1"],44,431,"13","MT2342T00DJW"],[["CX75-1","EN75-1"],44,431,"18","MT2346200043"],[["CX75-1","EN75-1"],44,431,"20","MT2346200674"],[["CX75-1","EN75-1"],44,431,"22","72482307250802"],[["CX75-1","EN75-1"],44,431,"40","MT2347XZ08HE"],[["CX75-1","EN75-1"],44,431,"42","MT2345XZ09EW"],[["DZ39-2","FD39-2"],45,441,"18","MT2346200105"],[["DZ39-2","FD39-2"],45,441,"20","MT2346200202"],[["DZ39-2","FD39-2"],45,441,"22","72482307250812"],[["DZ39-2","FD39-2"],45,441,"40","MT2345XZ09H2"],[["DZ39-2","FD39-2"],45,441,"42","MT2345XZ09H1"],[["DH75-2","EV75-2"],46,451,"3","MT2342T00DB6"],[["DH75-2","EV75-2"],46,451,"4","MT2342T00DAU"],[["DH75-2","EV75-2"],46,451,"6","MT2345T00LN2"],[["DH75-2","EV75-2"],46,451,"7","MT2342T00DV5"],[["DH75-2","EV75-2"],46,451,"9","MT2342T00DUF"],[["DH75-2","EV75-2"],46,451,"10","MT2342T00DR1"],[["DH75-2","EV75-2"],46,451,"12","MT2342T00D5H"],[["DH75-2","EV75-2"],46,451,"13","MT2342T00DF8"],[["DH75-2","EV75-2"],46,451,"18","MT2305201183"],[["DH75-2","EV75-2"],46,451,"20","MT2346200058"],[["DH75-2","EV75-2"],46,451,"22","72482307250817"],[["DH75-2","EV75-2"],46,451,"40","MT2345XZ09EQ"],[["DH75-2","EV75-2"],46,451,"42","MT2345XZ09ZM"],[["FD39-1","DZ39-1"],47,461,"18","MT2346200256"],[["FD39-1","DZ39-1"],47,461,"20","MT2346200359"],[["FD39-1","DZ39-1"],47,461,"22","72482307251031"],[["FD39-1","DZ39-1"],47,461,"25","MT2339XZ0JJ0"],[["FD39-1","DZ39-1"],47,461,"26","MT2339XZ0JHP"],[["FD39-1","DZ39-1"],47,461,"28","MT2339XZ0JJ9"],[["FD39-1","DZ39-1"],47,461,"29","MT2339XZ0JHY"],[["FD39-1","DZ39-1"],47,461,"31","MT2345XZ09Z0"],[["FD39-1","DZ39-1"],47,461,"33","MT2345XZ09H5"],[["FD39-1","DZ39-1"],47,461,"35","MT2345XZ09ZP"],[["FD39-1","DZ39-1"],47,461,"37","MT2345XZ097D"],[["FD39-1","DZ39-1"],47,461,"40","MT2345XZ09L2"],[["FD39-1","DZ39-1"],47,461,"42","MT2345XZ09ZV"],[["DH75-1","EV75-1"],48,471,"3","MT2340T00JGE"],[["DH75-1","EV75-1"],48,471,"4","MT2345T00LMK"],[["DH75-1","EV75-1"],48,471,"6","MT2345T00LMJ"],[["DH75-1","EV75-1"],48,471,"7","MT2342T00D5B"],[["DH75-1","EV75-1"],48,471,"9","MT2342T00D5C"],[["DH75-1","EV75-1"],48,471,"10","MT2345T00LNN"],[["DH75-1","EV75-1"],48,471,"12","MT2342T00DBM"],[["DH75-1","EV75-1"],48,471,"13","MT2342T00D5Q"],[["DH75-1","EV75-1"],48,471,"18","MT2346200035"],[["DH75-1","EV75-1"],48,471,"20","MT2346200625"],[["DH75-1","EV75-1"],48,471,"22","72482307250969"],[["DH75-1","EV75-1"],48,471,"40","MT2345XZ09HD"],[["DH75-1","EV75-1"],48,471,"42","MT2345XZ0A04"],[["EG39-2","FL39-2"],49,481,"18","MT2346200137"],[["EG39-2","FL39-2"],49,481,"20","MT2346200636"],[["EG39-2","FL39-2"],49,481,"22","72482307251004"],[["EG39-2","FL39-2"],49,481,"40","MT2345XZ09ZW"],[["EG39-2","FL39-2"],49,481,"42","MT2347XZ08JA"],[["DX75-2","DG39-2"],50,491,"3","MT2345T00LP0"],[["DX75-2","DG39-2"],50,491,"4","MT2345T00LP7"],[["DX75-2","DG39-2"],50,491,"6","MT2342T00D8M"],[["DX75-2","DG39-2"],50,491,"7","MT2340T00JGF"],[["DX75-2","DG39-2"],50,491,"9","MT2345T00LMN"],[["DX75-2","DG39-2"],50,491,"10","MT2340T00JJA"],[["DX75-2","DG39-2"],50,491,"12","MT2345T00LP5"],[["DX75-2","DG39-2"],50,491,"13","MT2345T00LNC"],[["DX75-2","DG39-2"],50,491,"18","MT2346200570"],[["DX75-2","DG39-2"],50,491,"20","MT2346200245"],[["DX75-2","DG39-2"],50,491,"22","72482307250818"],[["DX75-2","DG39-2"],50,491,"40","MT2345XZ09YY"],[["DX75-2","DG39-2"],50,491,"42","MT2345XZ09YZ"],[["EG39-1","FL39-1"],51,501,"18","MT2346200079"],[["EG39-1","FL39-1"],51,501,"20","MT2346200365"],[["EG39-1","FL39-1"],51,501,"22","72482307251024"],[["EG39-1","FL39-1"],51,501,"40","MT2345XZ09KP"],[["EG39-1","FL39-1"],51,501,"42","MT2345XZ09HC"],[["DX75-1","DG39-1"],52,511,"3","MT2342T00DKT"],[["DX75-1","DG39-1"],52,511,"4","MT2342T00DK5"],[["DX75-1","DG39-1"],52,511,"6","MT2344T00HK3"],[["DX75-1","DG39-1"],52,511,"7","MT2342T00D5X"],[["DX75-1","DG39-1"],52,511,"9","MT2340T00JGN"],[["DX75-1","DG39-1"],52,511,"10","MT2342T00D5R"],[["DX75-1","DG39-1"],52,511,"12","MT2342T00D4A"],[["DX75-1","DG39-1"],52,511,"13","MT2345T00LP4"],[["DX75-1","DG39-1"],52,511,"18","MT2346200017"],[["DX75-1","DG39-1"],52,511,"20","MT2346200025"],[["DX75-1","DG39-1"],52,511,"22","72482307250965"],[["DX75-1","DG39-1"],52,511,"40","MT2345XZ09KQ"],[["DX75-1","DG39-1"],52,511,"42","MT2345XZ09H3"],[["EP39-2","DL39-2"],53,521,"18","MT2346200087"],[["EP39-2","DL39-2"],53,521,"20","MT2346200279"],[["EP39-2","DL39-2"],53,521,"22","72482307250823"],[["EP39-2","DL39-2"],53,521,"40","MT2345XZ0A03"],[["EP39-2","DL39-2"],53,521,"42","MT2345XZ097E"],[["EE75-2","FK75-2"],54,531,"3","MT2342T00DJU"],[["EE75-2","FK75-2"],54,531,"4","MT2344T00HP9"],[["EE75-2","FK75-2"],54,531,"6","MT2345T00LV6"],[["EE75-2","FK75-2"],54,531,"7","MT2345T00LV7"],[["EE75-2","FK75-2"],54,531,"9","MT2344T00HUQ"],[["EE75-2","FK75-2"],54,531,"10","MT2342T00DKW"],[["EE75-2","FK75-2"],54,531,"12","MT2342T00DUV"],[["EE75-2","FK75-2"],54,531,"13","MT2342T00D5T"],[["EE75-2","FK75-2"],54,531,"18","MT2346200401"],[["EE75-2","FK75-2"],54,531,"20","MT2346200353"],[["EE75-2","FK75-2"],54,531,"22","72482307250803"],[["EE75-2","FK75-2"],54,531,"40","MT2345XZ09ZZ"],[["EE75-2","FK75-2"],54,531,"42","MT2345XZ09L1"],[["EP39-1","DL39-1"],55,541,"18","MT2346200383"],[["EP39-1","DL39-1"],55,541,"20","MT2346200632"],[["EP39-1","DL39-1"],55,541,"22","72482307250806"],[["EP39-1","DL39-1"],55,541,"40","MT2345XZ09KJ"],[["EP39-1","DL39-1"],55,541,"42","MT2345XZ09ZN"],[["EE75-1","FK75-1"],56,551,"3","MT2344T00HQ0"],[["EE75-1","FK75-1"],56,551,"4","MT2342T00DKV"],[["EE75-1","FK75-1"],56,551,"6","MT2344T00HR6"],[["EE75-1","FK75-1"],56,551,"7","MT2344T00HP1"],[["EE75-1","FK75-1"],56,551,"9","MT2345T00LTW"],[["EE75-1","FK75-1"],56,551,"10","MT2345T00LV9"],[["EE75-1","FK75-1"],56,551,"12","MT2342T00D93"],[["EE75-1","FK75-1"],56,551,"13","MT2344T00HR4"],[["EE75-1","FK75-1"],56,551,"18","MT2346200747"],[["EE75-1","FK75-1"],56,551,"20","MT2346200019"],[["EE75-1","FK75-1"],56,551,"22","72482211197351"],[["EE75-1","FK75-1"],56,551,"40","MT2345XZ09HE"],[["EE75-1","FK75-1"],56,551,"42","MT2345XZ09L9"]];
+const NET_DEVICES=_nd.map(([rpps,row,cab,uSpace,serial])=>({rpps,row,cab,uSpace,serial}));
+
+const PHASE_COLORS = {'1A':'#FF9800','2A':'#F44336','1B':'#4CAF50','2B':'#2196F3','':'#607D8B'};
+const PHASE_MAP = {"AS01-2": "2A", "BQ37-2": "1B", "AT37-2": "2B", "BW01-2": "1A", "AS01-1": "2A", "BQ37-1": "1B", "AT37-1": "2B", "BW01-1": "1A", "AZ01-2": "2A", "BX37-2": "1B", "BA37-2": "2B", "CD01-2": "1A", "AZ01-1": "2A", "BX37-1": "1B", "BA37-1": "2B", "CD01-1": "1A", "BP01-2": "2A", "CE37-2": "1B", "BH37-2": "2B", "CH01-2": "1A", "BP01-1": "2A", "CE37-1": "1B", "BH37-1": "2B", "CH01-1": "1A", "DL01-2": "2A", "DR37-2": "1B", "DY37-2": "2B", "DG01-2": "1A", "DL01-1": "2A", "DR37-1": "1B", "DY37-1": "2B", "DG01-1": "1A", "DG37-2": "2A", "EV37-2": "1B", "EF37-2": "2B", "EP01-2": "1A", "DG37-1": "2A", "EV37-1": "1B", "EF37-1": "2B", "EP01-1": "1A", "DZ01-2": "2A", "FC37-2": "1B", "EN37-2": "2B", "EW01-2": "1A", "DZ01-1": "2A", "FC37-1": "1B", "EN37-1": "2B", "EW01-1": "1A", "EG01-2": "2A", "FK37-2": "1B", "DL37-2": "2B", "FL01-2": "1A", "EG01-1": "2A", "FK37-1": "1B", "DL37-1": "2B", "FL01-1": "1A", "AU39-2": "2A", "BN75-2": "1B", "AR75-2": "2B", "BR39-2": "1A", "AU39-1": "2A", "BN75-1": "1B", "AR75-1": "2B", "BR39-1": "1A", "BB39-2": "2A", "CC75-2": "1B", "AY75-2": "2B", "BY39-2": "1A", "BB39-1": "2A", "CC75-1": "1B", "AY75-1": "2B", "BY39-1": "1A", "BJ39-2": "2A", "CP75-2": "1B", "BF75-2": "2B", "CF39-2": "1A", "DS39-1": "2A", "EN75-1": "1B", "CX75-1": "2B", "EW39-1": "1A", "DZ39-2": "2A", "EV75-2": "1B", "DH75-2": "2B", "FD39-2": "1A", "DZ39-1": "2A", "EV75-1": "1B", "DH75-1": "2B", "FD39-1": "1A", "EG39-2": "2A", "DG39-2": "1B", "DX75-2": "2B", "FL39-2": "1A", "EG39-1": "2A", "DG39-1": "1B", "DX75-1": "2B", "FL39-1": "1A", "EP39-2": "2A", "FK75-2": "1B", "EE75-2": "2B", "DL39-2": "1A", "EP39-1": "2A", "FK75-1": "1B", "EE75-1": "2B", "DL39-1": "1A", "CX75-2": "2B", "CF39-1": "1A", "DS39-2": "2A", "EN75-2": "1B", "CP75-1": "1B", "BF75-1": "2B", "BJ39-1": "2A", "EW39-2": "1A", "BH37-2": "2B", "DU01-1/DG37-1": "2A", "DU01-2/DG37-2": "2A", "CF75-1": "1B", "EN95-2": "1B", "FP37-1/DL37-1": "2B", "FP37-2/DL37-2": "2B"};
+function getPhase(rpp) { return PHASE_MAP[rpp] || ''; }
+
+// Build compute node maps
+const byRPP = {}, byCab = {}, bySerial = {};
+COMPUTE_NODES.forEach(n => {
+  if (!byRPP[n.rpp]) byRPP[n.rpp] = [];
+  byRPP[n.rpp].push(n);
+  const k = n.row+'_'+n.cab;
+  if (!byCab[k]) byCab[k] = [];
+  byCab[k].push(n);
+  bySerial[n.serial] = {type:'compute', node:n};
+});
+
+// Build network device maps
+const netByRPP = {}, netByCab = {}, netBySerial = {};
+NET_DEVICES.forEach(d => {
+  d.rpps.forEach(rpp => {
+    if (!netByRPP[rpp]) netByRPP[rpp] = [];
+    netByRPP[rpp].push(d);
+  });
+  const k = d.row+'_'+d.cab;
+  if (!netByCab[k]) netByCab[k] = [];
+  if (!netByCab[k].find(x => x.serial === d.serial)) netByCab[k].push(d);
+  netBySerial[d.serial] = {type:'net', node:d};
+});
+
+// RPP metadata
+const rppMeta = {};
+Object.keys(byRPP).forEach(rpp => {
+  const ns = byRPP[rpp];
+  rppMeta[rpp] = { phase: getPhase(rpp)||ns[0].phase, rows: [...new Set(ns.map(n=>n.row))].sort((a,b)=>a-b), computeCount: ns.length, netCount: (netByRPP[rpp]||[]).length };
+});
+// Add RPPs that only appear in net data
+Object.keys(netByRPP).forEach(rpp => {
+  if (!rppMeta[rpp]) {
+    rppMeta[rpp] = { phase: getPhase(rpp), rows: [...new Set((netByRPP[rpp]||[]).map(d=>d.row))].sort((a,b)=>a-b), computeCount: 0, netCount: (netByRPP[rpp]||[]).length };
+  }
+});
+
+const POD_LABELS = {
+  1:'A1',2:'A1',3:'A1',4:'A1',5:'A1',6:'A1',7:'A1',8:'A1',9:'A1',10:'A1',
+  11:'A2',12:'A2',13:'A2',14:'A2',15:'A2',16:'A2',17:'A2',18:'A2',
+  19:'A3',20:'A3',21:'A3',22:'A3',23:'A3',24:'A3',25:'A3',26:'A3',27:'A3',28:'A3',
+  29:'B1',30:'B1',31:'B1',32:'B1',33:'B1',34:'B1',35:'B1',36:'B1',37:'B1',38:'B1',
+  39:'INFRA',40:'INFRA',41:'INFRA',42:'INFRA',
+  43:'B2',44:'B2',45:'B2',46:'B2',47:'B3',48:'B3',
+  49:'B3',50:'B3',51:'B3',52:'B3',53:'B3',54:'B3',55:'B3',56:'B3'
+};
+const INFRA_ROWS = new Set([39,40,41,42]);
+
+function phaseColor(p) { return PHASE_COLORS[p]||'#607D8B'; }
+
+function getRowCabinets(rowNum) {
+  const pairIdx = Math.ceil(rowNum/2)-1;
+  const isOdd = rowNum%2===1;
+  const base = pairIdx*20;
+  if (isOdd) return Array.from({length:10},(_,i)=>base+i+1);
+  else return Array.from({length:10},(_,i)=>base+20-i);
+}
+
+let selectedRPP=null, selectedCab=null, selectedFeed=null;
+
+function buildRPPList() {
+  const list = document.getElementById('rpp-list');
+  list.innerHTML = '';
+  
+  // Group by pod
+  const groups = {};
+  Object.keys(rppMeta).sort().forEach(rpp => {
+    const m = rppMeta[rpp];
+    const pod = POD_LABELS[m.rows[0]]||'?';
+    const label = `${pod} — Rows ${m.rows[0]}–${m.rows[m.rows.length-1]}`;
+    if (!groups[label]) groups[label]=[];
+    groups[label].push(rpp);
+  });
+  
+  Object.keys(groups).sort().forEach(g => {
+    const h = document.createElement('div');
+    h.className='rpp-group-header'; h.textContent=g;
+    list.appendChild(h);
+    groups[g].sort().forEach(rpp => {
+      const m = rppMeta[rpp];
+      const item = document.createElement('div');
+      item.className='rpp-item'; item.dataset.rpp=rpp;
+      const dot = document.createElement('div');
+      dot.className='rpp-dot'; dot.style.background=phaseColor(m.phase);
+      const name = document.createElement('div');
+      name.className='rpp-name'; name.textContent=rpp;
+      const phase = document.createElement('div');
+      phase.className='rpp-phase'; phase.textContent=m.phase; phase.style.color=phaseColor(m.phase);
+      const count = document.createElement('div');
+      count.className='rpp-count';
+      const total = m.computeCount + m.netCount;
+      count.textContent=total; count.title=`${m.computeCount} compute + ${m.netCount} network`;
+      item.appendChild(dot); item.appendChild(name); item.appendChild(phase); item.appendChild(count);
+      item.addEventListener('click',()=>selectRPP(rpp));
+      list.appendChild(item);
+    });
+  });
+}
+
+function buildFloorPlan() {
+  const fp = document.getElementById('floor-plan');
+  fp.innerHTML='';
+  
+  const sideA = document.createElement('div'); sideA.className='floor-side';
+  const sideB = document.createElement('div'); sideB.className='floor-side';
+  
+  function makeLabel(txt, color) {
+    const d = document.createElement('div');
+    d.style.cssText=`font-size:10px;font-weight:700;color:${color};text-align:center;padding:3px;background:#1a1d2e;border-radius:3px;margin-bottom:3px;letter-spacing:1px;`;
+    d.textContent=txt; return d;
+  }
+  sideA.appendChild(makeLabel('GRID-A  (Rows 1–28)','#4a6090'));
+  sideB.appendChild(makeLabel('GRID-B  (Rows 29–56)','#6a4090'));
+
+  function buildSide(side, startRow, endRow) {
+    let lastPod=null;
+    for (let rowNum=startRow; rowNum<=endRow; rowNum++) {
+      const pod=POD_LABELS[rowNum]||'';
+      if (pod!==lastPod) {
+        const pd=document.createElement('div');
+        pd.className='pod-div';
+        pd.textContent='POD '+pod;
+        side.appendChild(pd); lastPod=pod;
+      }
+      const rowEl=document.createElement('div'); rowEl.className='floor-row';
+      const rl=document.createElement('div'); rl.className='row-label'; rl.textContent=rowNum;
+      rowEl.appendChild(rl);
+      
+      const cabs=getRowCabinets(rowNum);
+      cabs.forEach((cabNum,posIdx) => {
+        const cabEl=document.createElement('div'); cabEl.className='cabinet';
+        cabEl.dataset.row=rowNum; cabEl.dataset.cab=cabNum;
+        const k=rowNum+'_'+cabNum;
+        const computeNodes=byCab[k]||[];
+        const netNodes=netByCab[k]||[];
+        const isEOR = posIdx===0||posIdx===9;
+        const isInfra = INFRA_ROWS.has(rowNum);
+        
+        if (isInfra) {
+          // Infrastructure rows - show net devices
+          if (netNodes.length>0) {
+            cabEl.classList.add('infra-cab','clickable');
+            const strips=document.createElement('div'); strips.className='cab-strips';
+            // Show RPP colors for this infra cab
+            const rppsHere=[...new Set(netNodes.flatMap(d=>d.rpps))];
+            rppsHere.slice(0,2).forEach(rpp=>{
+              const s=document.createElement('div'); s.className='cab-strip';
+              const m=rppMeta[rpp]; s.style.background=m?phaseColor(m.phase):'#607D8B'; s.style.opacity='0.8';
+              strips.appendChild(s);
+            });
+            cabEl.appendChild(strips);
+            const lbl=document.createElement('div'); lbl.className='cab-label'; lbl.textContent=cabNum;
+            cabEl.appendChild(lbl);
+            cabEl.addEventListener('click',()=>selectCabinet(rowNum,cabNum));
+          } else {
+            cabEl.classList.add('infra-cab');
+            const t=document.createElement('div'); t.className='cab-type'; t.textContent='—'; cabEl.appendChild(t);
+          }
+        } else if (isEOR && netNodes.length>0) {
+          // EOR/switch cabinet with network devices
+                    cabEl.classList.add('net-cab','clickable');
+            const strips=document.createElement('div'); strips.className='cab-strips';
+            const eorRpps=[...new Set(netNodes.flatMap(d=>d.rpps))];
+            eorRpps.slice(0,2).forEach(rpp=>{
+              const s=document.createElement('div'); s.className='cab-strip';
+              const m=rppMeta[rpp];
+              s.style.background=m?phaseColor(m.phase):'#607D8B'; s.style.opacity='0.8'; strips.appendChild(s);
+            });
+          cabEl.appendChild(strips);
+          const lbl=document.createElement('div'); lbl.className='cab-label'; lbl.textContent=cabNum;
+          cabEl.appendChild(lbl);
+          cabEl.addEventListener('click',()=>selectCabinet(rowNum,cabNum));
+        } else if (computeNodes.length>0) {
+          // Compute cabinet
+          cabEl.classList.add('clickable');
+          const strips=document.createElement('div'); strips.className='cab-strips';
+          [...computeNodes].sort((a,b)=>a.rackU-b.rackU).forEach(n=>{
+            const s=document.createElement('div'); s.className='cab-strip';
+            s.style.background=phaseColor(n.phase); s.style.opacity='0.85'; strips.appendChild(s);
+          });
+          cabEl.appendChild(strips);
+          const lbl=document.createElement('div'); lbl.className='cab-label'; lbl.textContent=cabNum;
+          cabEl.appendChild(lbl);
+          cabEl.addEventListener('click',()=>selectCabinet(rowNum,cabNum));
+        } else {
+          // Empty
+          cabEl.classList.add('special');
+          const t=document.createElement('div'); t.className='cab-type';
+          t.textContent=isEOR?'U':'—'; cabEl.appendChild(t);
+        }
+        rowEl.appendChild(cabEl);
+      });
+      side.appendChild(rowEl);
+    }
+  }
+  
+  buildSide(sideA,1,28);
+  buildSide(sideB,29,56);
+  
+  const aisle=document.createElement('div'); aisle.className='aisle-col';
+  const al=document.createElement('div'); al.className='aisle-label'; al.textContent='◄ COLD AISLE ►';
+  aisle.appendChild(al);
+  
+  fp.appendChild(sideA); fp.appendChild(aisle); fp.appendChild(sideB);
+}
+
+function selectFeed(phase) {
+  if (selectedFeed === phase) { clearSelection(); return; }
+  selectedFeed = phase; selectedRPP = null; selectedCab = null;
+
+  // Deselect all RPP items
+  document.querySelectorAll('.rpp-item').forEach(e => e.classList.remove('selected'));
+
+  // Mark the legend item active
+  document.querySelectorAll('.leg-item.clickable').forEach(el => {
+    el.classList.toggle('feed-active', el.dataset.phase === phase);
+  });
+
+  // Collect all cabs connected to any RPP of this phase
+  const affectedKeys = new Set();
+  Object.keys(PHASE_MAP).forEach(rpp => {
+    if (PHASE_MAP[rpp] === phase) {
+      (byRPP[rpp]||[]).forEach(n => affectedKeys.add(n.row+'_'+n.cab));
+      (netByRPP[rpp]||[]).forEach(d => affectedKeys.add(d.row+'_'+d.cab));
+    }
+  });
+
+  document.querySelectorAll('.cabinet').forEach(el => {
+    const k = el.dataset.row+'_'+el.dataset.cab;
+    const hasData = byCab[k] || netByCab[k];
+    if (affectedKeys.has(k)) { el.classList.add('highlighted'); el.classList.remove('dimmed','selected'); }
+    else if (hasData) { el.classList.add('dimmed'); el.classList.remove('highlighted','selected'); }
+    else { el.classList.remove('highlighted','dimmed','selected'); }
+  });
+
+  const color = phaseColor(phase);
+  const rppsOfPhase = Object.keys(PHASE_MAP).filter(r => PHASE_MAP[r] === phase).sort();
+  const totalCompute = rppsOfPhase.reduce((s,r) => s+(byRPP[r]||[]).length, 0);
+  const totalNet = rppsOfPhase.reduce((s,r) => s+(netByRPP[r]||[]).length, 0);
+
+  let html = `
+    <div class="detail-section">
+      <h3>Feed ${phase}</h3>
+      <div class="info-row"><span class="lbl">Phase</span><span class="val" style="color:${color};font-weight:800;">Feed ${phase}</span></div>
+      <div class="info-row"><span class="lbl">RPP Panels</span><span class="val">${rppsOfPhase.length} panels</span></div>
+      <div class="info-row"><span class="lbl">Compute Nodes</span><span class="val">${totalCompute}</span></div>
+      <div class="info-row"><span class="lbl">Network Devices</span><span class="val">${totalNet}</span></div>
+      <div class="info-row"><span class="lbl">Cabinets highlighted</span><span class="val">${affectedKeys.size}</span></div>
+    </div>
+    <div class="impact-box">
+      <div class="impact-label">IF FEED ${phase} FAILS:</div>
+      <div class="impact-count" style="color:${color};">${totalCompute}</div>
+      <div class="impact-label" style="color:${color};">compute nodes lose this feed</div>
+      <div class="impact-warning">+ ${totalNet} network devices also affected</div>
+    </div>
+    <div class="detail-section">
+      <h3>RPP Panels on Feed ${phase}</h3>
+      <div class="server-list">`;
+  rppsOfPhase.forEach(r => {
+    const cc = (byRPP[r]||[]).length;
+    const nc = (netByRPP[r]||[]).length;
+    html += `<div class="net-item" onclick="selectRPP('${r}')">
+      <div style="display:flex;justify-content:space-between;">
+        <span class="net-serial" style="color:${color};">${r}</span>
+        <span style="font-size:9px;color:#94a3b8;">${cc}C + ${nc}N</span>
+      </div>
+    </div>`;
+  });
+  html += `</div></div>`;
+  document.getElementById('detail-content').innerHTML = html;
+  document.getElementById('sel-stat').textContent = `Feed ${phase}: ${totalCompute} compute + ${totalNet} net across ${affectedKeys.size} cabs`;
+}
+
+function clearSelection() {
+  selectedRPP=null; selectedCab=null; selectedFeed=null;
+  document.querySelectorAll('.rpp-item').forEach(e=>e.classList.remove('selected'));
+  document.querySelectorAll('.cabinet').forEach(e=>e.classList.remove('highlighted','dimmed','selected'));
+  document.querySelectorAll('.leg-item.clickable').forEach(e=>e.classList.remove('feed-active'));
+  document.getElementById('detail-content').innerHTML='<div class="detail-empty">&#9889; Click an RPP, cabinet,<br>or network device to see<br>power impact details</div>';
+  document.getElementById('sel-stat').textContent='';
+}
+
+function highlightRPP(rpp) {
+  const computeNodes = byRPP[rpp]||[];
+  const netNodes = netByRPP[rpp]||[];
+  const affectedKeys = new Set([
+    ...computeNodes.map(n=>n.row+'_'+n.cab),
+    ...netNodes.map(d=>d.row+'_'+d.cab)
+  ]);
+  document.querySelectorAll('.cabinet').forEach(el=>{
+    const k=el.dataset.row+'_'+el.dataset.cab;
+    const hasData=byCab[k]||netByCab[k];
+    if (affectedKeys.has(k)) { el.classList.add('highlighted'); el.classList.remove('dimmed','selected'); }
+    else if (hasData) { el.classList.add('dimmed'); el.classList.remove('highlighted','selected'); }
+    else { el.classList.remove('highlighted','dimmed','selected'); }
+  });
+}
+
+function selectRPP(rpp) {
+  selectedRPP=rpp; selectedCab=null; selectedFeed=null;
+  document.querySelectorAll('.rpp-item').forEach(e=>e.classList.toggle('selected',e.dataset.rpp===rpp));
+  document.querySelectorAll('.leg-item.clickable').forEach(e=>e.classList.remove('feed-active'));
+  highlightRPP(rpp);
+  showRPPDetail(rpp);
+  const m=rppMeta[rpp];
+  document.getElementById('sel-stat').textContent=`RPP: ${rpp} — ${m.computeCount} compute + ${m.netCount} network devices`;
+}
+
+function showRPPDetail(rpp) {
+  const m=rppMeta[rpp];
+  const computeNodes=(byRPP[rpp]||[]).sort((a,b)=>a.row-b.row||a.cab-b.cab);
+  const netNodes=[...new Set((netByRPP[rpp]||[]).map(d=>d.serial))].map(s=>netBySerial[s].node);
+  const affectedCabs=[...new Set([...computeNodes.map(n=>n.cab),...netNodes.map(d=>d.cab)])].sort((a,b)=>a-b);
+  const hasNotes=computeNodes.filter(n=>n.notes);
+  const color=phaseColor(m.phase);
+  
+  let html=`
+    <div class="detail-section">
+      <h3>RPP Panel</h3>
+      <div class="info-row"><span class="lbl">Name</span><span class="val" style="color:${color}">${rpp}</span></div>
+      <div class="info-row"><span class="lbl">Feed</span><span class="val" style="color:${color}">Feed ${m.phase||'—'}</span></div>
+      <div class="info-row"><span class="lbl">Rows</span><span class="val">${m.rows[0]}–${m.rows[m.rows.length-1]}</span></div>
+      <div class="info-row"><span class="lbl">Pod</span><span class="val">${POD_LABELS[m.rows[0]]||'?'}</span></div>
+    </div>`;
+
+  if (computeNodes.length>0) {
+    html+=`<div class="impact-box">
+      <div class="impact-label">COMPUTE IMPACT IF FAILS:</div>
+      <div class="impact-count">${computeNodes.length}</div>
+      <div class="impact-label">compute nodes lose Feed ${m.phase}</div>
+      <div class="impact-warning">&#9888; ${[...new Set(computeNodes.map(n=>n.cab))].length} cabinets across ${m.rows.length} rows</div>
+      ${hasNotes.length?`<div class="impact-warning" style="color:#ffaa44;">&#9888; ${hasNotes.length} node(s) with known issues</div>`:''}
+    </div>`;
+  }
+  if (netNodes.length>0) {
+    html+=`<div class="net-impact-box">
+      <div class="net-impact-label">NETWORK IMPACT IF FAILS:</div>
+      <div class="net-impact-count">${netNodes.length}</div>
+      <div class="net-impact-label">network devices lose a power feed</div>
+      <div style="font-size:10px;color:#3070a0;margin-top:4px;">Cabinets: ${[...new Set(netNodes.map(d=>d.cab))].sort((a,b)=>a-b).join(', ')}</div>
+    </div>`;
+  }
+
+  if (computeNodes.length>0) {
+    html+=`<div class="detail-section"><h3>Compute Nodes (${computeNodes.length})</h3><div class="server-list scrollbar-thin">`;
+    computeNodes.forEach(n=>{
+      html+=`<div class="server-item ${n.notes?'':''}` + `" onclick="selectCabinet(${n.row},${n.cab})">
+        <div class="srv-phase-dot" style="background:${phaseColor(n.phase)}"></div>
+        <div style="flex:1">
+          <div style="display:flex;justify-content:space-between;">
+            <span class="srv-serial">${n.serial}</span>
+            <span class="srv-loc">R${n.row} C${n.cab}</span>
+          </div>
+          ${n.notes?`<div class="srv-note">&#9888; ${n.notes}</div>`:''}
+        </div>
+      </div>`;
+    });
+    html+=`</div></div>`;
+  }
+
+  if (netNodes.length>0) {
+    html+=`<div class="detail-section"><h3>Network Devices (${netNodes.length})</h3><div class="server-list scrollbar-thin">`;
+    netNodes.sort((a,b)=>a.row-b.row||a.cab-b.cab).forEach(d=>{
+      html+=`<div class="net-item" onclick="selectCabinet(${d.row},${d.cab})">
+        <div style="display:flex;justify-content:space-between;">
+          <span class="net-serial">${d.serial}</span>
+          <span class="net-loc">R${d.row} C${d.cab} U${d.uSpace}</span>
+        </div>
+        <div style="font-size:9px;color:#3a6080;">Feeds: ${d.rpps.join(', ')}</div>
+      </div>`;
+    });
+    html+=`</div></div>`;
+  }
+
+  document.getElementById('detail-content').innerHTML=html;
+}
+
+function selectCabinet(rowNum, cabNum) {
+  selectedCab={row:rowNum,cab:cabNum}; selectedRPP=null;
+  document.querySelectorAll('.rpp-item').forEach(e=>e.classList.remove('selected'));
+  const k=rowNum+'_'+cabNum;
+  document.querySelectorAll('.cabinet').forEach(el=>{
+    const ek=el.dataset.row+'_'+el.dataset.cab;
+    const hasData=byCab[ek]||netByCab[ek];
+    if (ek===k) { el.classList.add('selected'); el.classList.remove('highlighted','dimmed'); }
+    else { el.classList.remove('selected','highlighted'); if(hasData) el.classList.add('dimmed'); }
+  });
+  showCabinetDetail(rowNum,cabNum);
+  document.getElementById('sel-stat').textContent=`Cabinet ${cabNum} (Row ${rowNum})`;
+}
+
+function showCabinetDetail(rowNum, cabNum) {
+  const k=rowNum+'_'+cabNum;
+  const computeNodes=(byCab[k]||[]).sort((a,b)=>a.rackU-b.rackU);
+  const netNodes=netByCab[k]||[];
+  const pod=POD_LABELS[rowNum]||'?';
+  const isInfra=INFRA_ROWS.has(rowNum);
+  
+  if (!computeNodes.length && !netNodes.length) {
+    document.getElementById('detail-content').innerHTML='<div class="detail-empty">No devices in this cabinet</div>';
+    return;
+  }
+
+  let html=`<div class="detail-section">
+    <h3>Cabinet ${cabNum}</h3>
+    <div class="info-row"><span class="lbl">Row</span><span class="val">${rowNum}</span></div>
+    <div class="info-row"><span class="lbl">Pod</span><span class="val">${pod}</span></div>
+    <div class="info-row"><span class="lbl">Type</span><span class="val">${isInfra?'Infrastructure':computeNodes.length?'Compute':'Network/EOR'}</span></div>
+    ${computeNodes.length?`<div class="info-row"><span class="lbl">Compute</span><span class="val">${computeNodes.length} nodes</span></div>`:''}
+    ${netNodes.length?`<div class="info-row"><span class="lbl">Net Devices</span><span class="val">${netNodes.length} devices</span></div>`:''}
+  </div>`;
+
+  if (computeNodes.length>0) {
+    html+=`<div class="detail-section"><h3>Servers</h3>`;
+    computeNodes.forEach(n=>{
+      const color=phaseColor(n.phase);
+      html+=`<div class="cab-server-card" style="border-left-color:${color}" onclick="selectRPP('${n.rpp}')">
+        <div class="pdu-label">Node at U${n.rackU}</div>
+        <div class="srv-serial-big">${n.serial}</div>
+        <div class="rpp-big" style="color:${color}">${n.rpp}</div>
+        <div style="font-size:9px;color:${color};opacity:0.8;">Feed ${n.phase}</div>
+        ${n.notes?`<div style="font-size:9px;color:#ffaa44;">&#9888; ${n.notes}</div>`:''}
+      </div>`;
+    });
+    if (computeNodes.length>=2) {
+      html+=`<div style="font-size:10px;color:#4CAF50;margin:4px 0 8px;">&#10003; Dual-fed — survives single RPP failure</div>`;
+      html+=`<div class="detail-section"><h3>Impact if RPP fails</h3>`;
+      computeNodes.forEach(n=>{
+        const color=phaseColor(n.phase);
+        const cnt=(byRPP[n.rpp]||[]).length+(netByRPP[n.rpp]||[]).length;
+        html+=`<div style="background:#1a1d2e;border-radius:4px;padding:7px;margin-bottom:5px;border-left:3px solid ${color};cursor:pointer;" onclick="selectRPP('${n.rpp}')">
+          <div style="font-size:11px;font-weight:700;color:${color};">${n.rpp} fails →</div>
+          <div style="font-size:10px;color:#e0e0e0;">${(byRPP[n.rpp]||[]).length} compute nodes lose Feed ${n.phase}</div>
+          <div style="font-size:9px;color:#3070a0;">${(netByRPP[n.rpp]||[]).length} network devices affected</div>
+        </div>`;
+      });
+      html+=`</div>`;
+    }
+    html+=`</div>`;
+  }
+
+  if (netNodes.length>0) {
+    html+=`<div class="detail-section"><h3>Network Devices (${netNodes.length})</h3><div class="server-list scrollbar-thin">`;
+    netNodes.sort((a,b)=>parseInt(a.uSpace)-parseInt(b.uSpace)).forEach(d=>{
+      html+=`<div class="net-item">
+        <div style="display:flex;justify-content:space-between;">
+          <span class="net-serial">${d.serial}</span>
+          <span class="net-loc">U${d.uSpace}</span>
+        </div>
+        <div style="font-size:9px;color:#206080;">RPP Feeds: <span style="color:#4090b0;">${d.rpps.join(' + ')}</span></div>
+      </div>`;
+    });
+    html+=`</div>`;
+    const rppSet=[...new Set(netNodes.flatMap(d=>d.rpps))];
+    html+=`<div style="margin-top:8px;"><h3 style="font-size:10px;color:#7a7f9a;margin-bottom:6px;">IMPACT IF RPP FAILS</h3>`;
+    rppSet.forEach(rpp=>{
+      html+=`<div style="background:#111e28;border-radius:4px;padding:6px;margin-bottom:4px;border-left:3px solid #00BCD4;cursor:pointer;" onclick="selectRPP('${rpp}')">
+        <div style="font-size:10px;font-weight:700;color:#00BCD4;">${rpp} fails →</div>
+        <div style="font-size:9px;color:#e0e0e0;">${(netByRPP[rpp]||[]).length} network devices lose a power feed</div>
+      </div>`;
+    });
+    html+=`</div></div>`;
+  }
+
+  document.getElementById('detail-content').innerHTML=html;
+}
+
+// Search
+const searchInput=document.getElementById('search-input');
+const searchResults=document.getElementById('search-results');
+searchInput.addEventListener('input',()=>{
+  const q=searchInput.value.trim().toUpperCase();
+  if (q.length<3) { searchResults.style.display='none'; return; }
+  const allSerials={...bySerial,...netBySerial};
+  const matches=Object.keys(allSerials).filter(s=>s.toUpperCase().includes(q)).slice(0,12);
+  if (!matches.length) { searchResults.style.display='none'; return; }
+  searchResults.innerHTML='';
+  matches.forEach(serial=>{
+    const entry=allSerials[serial];
+    const n=entry.node;
+    const item=document.createElement('div'); item.className='sr-item';
+    if (entry.type==='compute') {
+      item.innerHTML=`<div class="sr-serial">${serial}</div><div class="sr-detail">Compute &bull; Row ${n.row} &bull; Cab ${n.cab} &bull; ${n.rpp} (${n.phase})</div>`;
+    } else {
+      item.innerHTML=`<div class="sr-serial" style="color:#60c0ff;">${serial}</div><div class="sr-detail">Network &bull; Row ${n.row} &bull; Cab ${n.cab} U${n.uSpace} &bull; ${n.rpps.join('/')}</div>`;
+    }
+    item.addEventListener('click',()=>{
+      searchResults.style.display='none'; searchInput.value='';
+      selectCabinet(n.row,n.cab);
+      setTimeout(()=>{ const el=document.querySelector(`.cabinet[data-row="${n.row}"][data-cab="${n.cab}"]`); if(el) el.scrollIntoView({behavior:'smooth',block:'center'}); },100);
+    });
+    searchResults.appendChild(item);
+  });
+  searchResults.style.display='block';
+});
+document.addEventListener('click',e=>{ if (!document.getElementById('search-box').contains(e.target)) searchResults.style.display='none'; });
+
+
+// ── Export ──────────────────────────────────────────────────────────────
+let _exportRows = [], _exportFilename = 'export.csv';
+
+function getExportRows() {
+  if (selectedRPP) {
+    const nodes = (byRPP[selectedRPP]||[]).sort((a,b)=>a.row-b.row||a.cab-b.cab);
+    const nets = [...new Set((netByRPP[selectedRPP]||[]).map(d=>d.serial))].map(s=>netBySerial[s].node);
+    const rows = [
+      ...nodes.map(n=>([n.serial,'compute',n.rpp,n.phase,'Row '+n.row,'Cab '+n.cab,'U'+n.rackU,n.notes||''])),
+      ...nets.sort((a,b)=>a.row-b.row||a.cab-b.cab).map(d=>([d.serial,'network',d.rpps.join('+'),'','Row '+d.row,'Cab '+d.cab,'U'+d.uSpace,'']))
+    ];
+    return { title:'RPP '+selectedRPP, filename:'rpp-'+selectedRPP+'.csv', rows };
+  }
+  if (selectedCab) {
+    const {row,cab} = selectedCab;
+    const k=row+'_'+cab;
+    const nodes=(byCab[k]||[]).sort((a,b)=>a.rackU-b.rackU);
+    const nets=netByCab[k]||[];
+    const rows = [
+      ...nodes.map(n=>([n.serial,'compute',n.rpp,n.phase,'Row '+n.row,'Cab '+n.cab,'U'+n.rackU,n.notes||''])),
+      ...nets.map(d=>([d.serial,'network',d.rpps.join('+'),'','Row '+d.row,'Cab '+d.cab,'U'+d.uSpace,'']))
+    ];
+    return { title:'Cabinet '+cab+' (Row '+row+')', filename:'cab-r'+row+'c'+cab+'.csv', rows };
+  }
+  if (selectedFeed) {
+    const rpps = Object.keys(PHASE_MAP).filter(r=>PHASE_MAP[r]===selectedFeed).sort();
+    const seen = new Set();
+    const rows = [];
+    rpps.forEach(r=>{
+      (byRPP[r]||[]).sort((a,b)=>a.row-b.row||a.cab-b.cab).forEach(n=>{
+        if (!seen.has(n.serial)) { seen.add(n.serial); rows.push([n.serial,'compute',n.rpp,n.phase,'Row '+n.row,'Cab '+n.cab,'U'+n.rackU,n.notes||'']); }
+      });
+      (netByRPP[r]||[]).forEach(d=>{
+        if (!seen.has(d.serial)) { seen.add(d.serial); rows.push([d.serial,'network',d.rpps.join('+'),'','Row '+d.row,'Cab '+d.cab,'U'+d.uSpace,'']); }
+      });
+    });
+    return { title:'Feed '+selectedFeed, filename:'feed-'+selectedFeed+'.csv', rows };
+  }
+  return null;
+}
+
+function showExportModal() {
+  const data = getExportRows();
+  if (!data || !data.rows.length) { alert('Select an RPP, cabinet, or feed first.'); return; }
+  _exportRows = data.rows;
+  _exportFilename = data.filename;
+  document.getElementById('ex-title').textContent = data.title + ' — Serial Export';
+  document.getElementById('ex-count').textContent = data.rows.length + ' device' + (data.rows.length!==1?'s':'');
+  const header = 'serial,type,rpp,phase,row,cabinet,u_position,notes';
+  document.getElementById('ex-textarea').value = header + '\n' + data.rows.map(r=>r.map(v=>v.includes(',')?'"'+v+'"':v).join(',')).join('\n');
+  const btn = document.getElementById('ex-copy-btn');
+  btn.textContent = 'Copy to Clipboard'; btn.classList.remove('copied');
+  document.getElementById('export-modal').classList.add('open');
+}
+
+function closeExportModal() {
+  document.getElementById('export-modal').classList.remove('open');
+}
+
+function copyExport() {
+  const ta = document.getElementById('ex-textarea');
+  navigator.clipboard.writeText(ta.value).then(()=>{
+    const btn = document.getElementById('ex-copy-btn');
+    btn.textContent = '✓ Copied!'; btn.classList.add('copied');
+    setTimeout(()=>{ btn.textContent='Copy to Clipboard'; btn.classList.remove('copied'); }, 2000);
+  });
+}
+
+function downloadExport() {
+  const csv = document.getElementById('ex-textarea').value;
+  const blob = new Blob([csv], {type:'text/csv'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = _exportFilename;
+  a.click();
+  URL.revokeObjectURL(a.href);
+}
+// ────────────────────────────────────────────────────────────────────────
+
+buildRPPList();
+buildFloorPlan();
+</script>
+
+<div id="export-modal" onclick="if(event.target===this)closeExportModal()">
+  <div id="export-box">
+    <div class="ex-head">
+      <div>
+        <div class="ex-title" id="ex-title">Export</div>
+        <div class="ex-count" id="ex-count"></div>
+      </div>
+      <button class="ex-close" onclick="closeExportModal()">&#10005;</button>
+    </div>
+    <textarea id="ex-textarea" readonly spellcheck="false"></textarea>
+    <div class="ex-actions">
+      <button class="ex-btn ex-btn-copy" id="ex-copy-btn" onclick="copyExport()">Copy to Clipboard</button>
+      <button class="ex-btn ex-btn-dl" onclick="downloadExport()">&#8595; Download CSV</button>
+    </div>
+  </div>
+</div>
+</body>
+</html>
