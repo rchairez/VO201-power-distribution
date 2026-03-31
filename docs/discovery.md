@@ -261,4 +261,96 @@ The ECharts Sankey diagram is the demo weapon. Show leadership power flowing fro
 
 ---
 
+## Shared CLAUDE.md — Vibe Coding Together Without Conflicts
+
+### What is it
+A `CLAUDE.md` file in the repo root that Claude Code auto-loads every session. Both Romeo and Robert get the same project context, conventions, and rules — so their AI sessions produce consistent, compatible code instead of conflicting approaches.
+
+### Why it matters
+Right now Robert's app has duplicated CSS, inconsistent patterns between DH1 and DH2, and tribal knowledge baked into code. That's what happens when one person vibe codes alone. Two people vibe coding without shared context doubles the problem. A shared CLAUDE.md is the single source of truth that keeps both devs (and their AI) aligned.
+
+### Recommended contents for Power Atlas CLAUDE.md
+
+```markdown
+# Power Atlas — CLAUDE.md
+
+## Project Overview
+Power distribution visualization for CoreWeave data centers.
+Multi-site tool: CSV upload for quick floor plans, live Jira/NetBox/RPP overlay for configured sites.
+
+## Architecture
+- Vanilla JS (no framework) — keep it accessible to both devs
+- ECharts for power flow visualizations (Sankey, gauges, heatmaps)
+- Jira integration via jira.js library
+- NetBox integration via API proxy
+- Data files: src/data/{site}-{datahall}.json
+
+## Data Schemas
+### Cabinet JSON format
+{ id, row, cab, type: "compute"|"network"|"infra"|"special", rppA, rppB, phaseA, phaseB }
+
+### RPP naming convention
+Format: {panel-id}-{suffix} (e.g., AS01-2, BQ37-1)
+Suffix -1 or -2 = redundant feed pair
+Phase mapping in PHASE_MAP: "1A", "1B", "2A", "2B"
+
+### Jira custom fields
+- customfield_10207 = location (rack reference, format: US-VO201.DH1.R{num})
+- customfield_10192 = hostname
+- SDA project = dedicated clients (Albatross)
+- DO project = standard DC Ops
+
+## File Ownership (conflict avoidance)
+Romeo owns:
+- src/components/floor-plan.js (Blueprint Map parser integration)
+- src/services/ (API clients)
+- docs/
+- demos/
+- vite.config.js, package.json
+
+Robert owns:
+- src/data/ (all site JSON data — he has the domain knowledge)
+- src/components/detail-panel.js (rack detail view)
+- src/components/rpp-panel.js (RPP sidebar)
+- RPP/power mapping data (only Robert has facilities contacts)
+
+Shared (coordinate before editing):
+- CLAUDE.md (discuss changes first)
+- src/styles/ (CSS changes affect everything)
+- src/main.js (entry point)
+- index.html (app shell)
+
+## Branch Strategy
+- main = stable, deployable
+- romeo-branch = Romeo's work
+- robert-branch = Robert's work
+- Feature branches off main for specific features
+- PRs required to merge into main — no direct pushes
+
+## Rules
+- Never hardcode site-specific data in JS — put it in src/data/*.json
+- Never commit API tokens or credentials — use .env (gitignored)
+- RPP data changes go through Robert (he validates with facilities)
+- New libraries need agreement from both devs before adding
+- CSS changes must work in both light and dark themes
+- Every new component needs a clear owner in the File Ownership section above
+```
+
+### Conflict avoidance strategy
+
+| Problem | Solution |
+|---------|----------|
+| Both edit the same file | **File ownership** in CLAUDE.md — each dev owns specific files. Claude Code reads this and avoids touching the other person's files. |
+| Inconsistent code style | **Rules section** — Claude follows these automatically. Both devs get the same patterns. |
+| Data schema drift | **Data Schemas section** — one format, documented. Claude validates against it. |
+| Merge conflicts on main | **Branch strategy** — each dev works on their own branch, PRs to merge. Never push directly to main. |
+| One dev adds a library the other doesn't know about | **Rule: new libraries need agreement** — prevents dependency surprises. |
+| RPP data changes without validation | **Rule: RPP changes go through Robert** — he's the domain expert with facilities contacts. |
+| Stale CLAUDE.md | **Rule: discuss changes first** — CLAUDE.md is shared territory, both devs update it together. |
+
+### How to pitch this to Robert
+"Instead of explaining the project to Claude every session, we put the rules in a file and Claude reads them automatically. Your sessions and my sessions both follow the same playbook. If you add a new RPP naming convention, you update CLAUDE.md once and my Claude knows about it too. No more 'oh I didn't know you changed that.'"
+
+---
+
 *Last updated: 2026-03-30 by Romeo Patino*
