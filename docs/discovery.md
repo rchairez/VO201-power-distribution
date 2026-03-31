@@ -353,4 +353,91 @@ Shared (coordinate before editing):
 
 ---
 
+## Additional Meeting Recommendations
+
+### 1. Career angle — frame it right
+This isn't a side project. Both Romeo and Robert are pursuing engineer titles at CW. Building an internal tool that leadership uses is exactly the kind of initiative that gets promoted. Frame it: "You built the prototype, I'm helping scale it. This goes on both our performance reviews. We both win."
+
+### 2. Demo script for leadership (rehearse with Robert)
+Don't wing the leadership demo. Three steps, 5 minutes:
+- **Step 1:** Open Power Atlas → "This is what Robert built. Interactive floor plan with live Jira tickets overlaid on racks."
+- **Step 2:** Open Sankey → "This is where it's going. Click a phase — see the blast radius. How many racks go dark."
+- **Step 3:** The ask → "We need one thing from facilities: RPP blueprints. PDF is fine. We handle the rest."
+
+Rehearse this before the real meeting. Robert demos his app (he built it, he should own that moment). Romeo demos the Sankey and the multi-site vision.
+
+### 3. Communication cadence
+We're at different sites. Decide:
+- **How often do we sync?** Recommendation: weekly 15-min call. Low overhead, keeps momentum.
+- **Where do we track work?** Recommendation: GitHub Issues on the repo. Simple, tied to the code.
+- **How do we handle blockers?** Recommendation: text/Slack for urgent, GitHub Issues for async.
+- **Where do we discuss design decisions?** Recommendation: PRs for code, `docs/` folder for architecture (like this doc).
+
+### 4. Migration strategy — don't break what works
+Robert's app works today. Worst thing we can do is rewrite it and break it. Agree on this order:
+1. **Don't touch main** until new structure is proven on a branch
+2. **Extract data first** — JSON files from the hardcoded HTML (lowest risk, highest value)
+3. **One file at a time** — pull shared CSS into a file, test, merge. Then shared JS. Then kill iframes.
+4. **Robert keeps his local workflow** until the Vite setup is proven
+5. **Always keep a working version** — if the refactor breaks things, revert. Ship > perfect.
+
+### 5. 30-day milestone plan
+Set concrete targets so this doesn't become a "someday" project:
+
+| Week | Milestone | Owner |
+|------|-----------|-------|
+| Week 1 (Apr 1-7) | Repo in CW org, CLAUDE.md merged, branches set up, NetBox token rotated | Romeo + Robert |
+| Week 2 (Apr 8-14) | Data extracted to JSON files, shared CSS split out, dark mode via CSS variables | Romeo (code) + Robert (data validation) |
+| Week 3 (Apr 15-21) | Sankey integrated into main app, Blueprint Map parser wired up (CSV upload) | Romeo |
+| Week 4 (Apr 22-28) | Demo to leadership, request facilities meeting for RPP blueprints | Robert (lead) + Romeo (support) |
+
+### 6. Fallback positions (if Robert pushes back)
+
+| If Robert says no to... | Fallback |
+|--------------------------|----------|
+| New shared repo | Work on his repo — Romeo contributes via PRs from a fork |
+| Claude Code | He keeps vibe coding his way, Romeo handles architecture and reviews PRs |
+| Vite / build step | Keep `python3 -m http.server` — just extract data to JSON (still a huge win) |
+| Merging with Blueprint Map | Keep them separate — just agree on shared data formats so they're compatible later |
+| 30-day timeline | Agree on Week 1 only. Ship one thing, then plan the next. |
+
+**The only non-negotiable:** Rotate that NetBox token. It's in a public repo.
+
+### 7. Ask Robert what HE wants
+Romeo has been planning the vision. Flip it. Ask Robert:
+- "What do you wish this app could do that it can't?"
+- "What's annoying about maintaining it?"
+- "What would make your daily job easier?"
+- "If you could show leadership one thing, what would it be?"
+
+His answers might redirect the whole scope. **The tool should solve Robert's pain point first — everything else is bonus.**
+
+---
+
+## Meeting Checklist (print this or have it open)
+
+- [ ] Open Sankey demo: `file:///Users/rpatino/VO201-power-distribution/demos/sankey-power-flow.html`
+- [ ] Open Power Atlas: `file:///Users/rpatino/VO201-power-distribution/VO201-power-distribution.html`
+- [ ] Have this doc open: `file:///Users/rpatino/VO201-power-distribution/docs/discovery.md`
+- [ ] Topics to cover:
+  - [ ] Demo Sankey (3 views + blast radius)
+  - [ ] Merge discussion (Blueprint Map + Power Atlas)
+  - [ ] Facilities meeting plan + pitch script
+  - [ ] Repo ownership (new shared repo in CW org?)
+  - [ ] Vibe coding workflow (Claude Code + shared CLAUDE.md)
+  - [ ] CODEOWNERS / file ownership
+  - [ ] Communication cadence (weekly sync + GitHub Issues)
+  - [ ] Migration strategy (don't break what works)
+  - [ ] 30-day milestones
+  - [ ] Ask Robert what he wants
+- [ ] Action items to assign:
+  - [ ] Robert: rotate NetBox token
+  - [ ] Robert: check if Jira custom fields are CW-standard
+  - [ ] Robert: schedule facilities meeting
+  - [ ] Romeo: move repo to CW org (if agreed)
+  - [ ] Romeo: set up branch protection + CODEOWNERS enforcement
+  - [ ] Both: agree on Week 1 milestone
+
+---
+
 *Last updated: 2026-03-30 by Romeo Patino*
