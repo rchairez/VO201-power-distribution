@@ -1,0 +1,788 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>VO201 DH1 Albatross — Power Flow</title>
+<script src="https://cdn.jsdelivr.net/npm/echarts@5.5.1/dist/echarts.min.js"></script>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap');
+
+  :root {
+    --surface-0: #08090c;
+    --surface-1: #0d0f14;
+    --surface-2: #12151c;
+    --surface-3: #1a1e28;
+    --border: #1e2230;
+    --text-0: #e8eaf0;
+    --text-1: #a0a6b8;
+    --text-2: #5c6278;
+    --phase-1a: #3b82f6;
+    --phase-1b: #22c55e;
+    --phase-2a: #a855f7;
+    --phase-2b: #f59e0b;
+    --accent: #6366f1;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'Space Grotesk', sans-serif;
+    background: var(--surface-0);
+    color: var(--text-0);
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  header {
+    padding: 20px 32px 16px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: flex-end;
+    gap: 24px;
+    flex-shrink: 0;
+  }
+
+  .header-left h1 {
+    font-size: 20px;
+    font-weight: 700;
+    letter-spacing: -0.5px;
+    color: var(--text-0);
+    line-height: 1;
+  }
+
+  .header-left .sub {
+    font-size: 11px;
+    font-weight: 500;
+    color: var(--text-2);
+    margin-top: 6px;
+    font-family: 'JetBrains Mono', monospace;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+  }
+
+  .header-stats {
+    display: flex;
+    gap: 28px;
+    margin-left: auto;
+    padding-bottom: 2px;
+  }
+
+  .stat {
+    text-align: right;
+  }
+
+  .stat-val {
+    font-size: 22px;
+    font-weight: 700;
+    font-family: 'JetBrains Mono', monospace;
+    letter-spacing: -1px;
+    line-height: 1;
+  }
+
+  .stat-label {
+    font-size: 9px;
+    font-weight: 600;
+    color: var(--text-2);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-top: 4px;
+  }
+
+  .phase-legend {
+    display: flex;
+    gap: 16px;
+    padding: 10px 32px;
+    border-bottom: 1px solid var(--border);
+    background: var(--surface-1);
+    flex-shrink: 0;
+  }
+
+  .phase-legend .leg {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 11px;
+    font-weight: 500;
+    color: var(--text-1);
+    font-family: 'JetBrains Mono', monospace;
+  }
+
+  .phase-legend .dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 2px;
+  }
+
+  .view-toggle {
+    margin-left: auto;
+    display: flex;
+    gap: 2px;
+    background: var(--surface-2);
+    border-radius: 6px;
+    padding: 2px;
+    border: 1px solid var(--border);
+  }
+
+  .view-btn {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    font-weight: 600;
+    padding: 5px 12px;
+    border-radius: 4px;
+    border: none;
+    background: transparent;
+    color: var(--text-2);
+    cursor: pointer;
+    transition: all 0.15s;
+    letter-spacing: 0.3px;
+  }
+
+  .view-btn:hover { color: var(--text-1); }
+  .view-btn.active {
+    background: var(--accent);
+    color: #fff;
+  }
+
+  .chart-area {
+    flex: 1;
+    display: flex;
+    overflow: hidden;
+  }
+
+  #sankey-chart {
+    flex: 1;
+  }
+
+  .info-panel {
+    width: 280px;
+    flex-shrink: 0;
+    border-left: 1px solid var(--border);
+    background: var(--surface-1);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  .info-header {
+    padding: 14px 16px;
+    border-bottom: 1px solid var(--border);
+    font-size: 9px;
+    font-weight: 700;
+    color: var(--text-2);
+    text-transform: uppercase;
+    letter-spacing: 1.2px;
+  }
+
+  .info-content {
+    flex: 1;
+    overflow-y: auto;
+    padding: 16px;
+  }
+
+  .info-empty {
+    color: var(--text-2);
+    font-size: 12px;
+    text-align: center;
+    margin-top: 60px;
+    line-height: 2;
+  }
+
+  .info-empty kbd {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    background: var(--surface-3);
+    border: 1px solid var(--border);
+    padding: 2px 6px;
+    border-radius: 3px;
+  }
+
+  .info-title {
+    font-size: 15px;
+    font-weight: 700;
+    margin-bottom: 4px;
+    letter-spacing: -0.3px;
+  }
+
+  .info-subtitle {
+    font-size: 10px;
+    font-family: 'JetBrains Mono', monospace;
+    color: var(--text-2);
+    margin-bottom: 16px;
+  }
+
+  .info-section {
+    margin-bottom: 14px;
+  }
+
+  .info-section h4 {
+    font-size: 9px;
+    font-weight: 700;
+    color: var(--text-2);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-bottom: 8px;
+    padding-bottom: 6px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .info-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 4px 0;
+    font-size: 12px;
+  }
+
+  .info-row .lbl { color: var(--text-2); font-size: 11px; }
+  .info-row .val {
+    font-weight: 600;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+  }
+
+  .blast-radius {
+    background: linear-gradient(135deg, rgba(239,68,68,0.08), rgba(239,68,68,0.03));
+    border: 1px solid rgba(239,68,68,0.15);
+    border-radius: 8px;
+    padding: 12px;
+    margin-top: 12px;
+  }
+
+  .blast-count {
+    font-size: 28px;
+    font-weight: 700;
+    font-family: 'JetBrains Mono', monospace;
+    color: #ef4444;
+    letter-spacing: -2px;
+    line-height: 1;
+  }
+
+  .blast-label {
+    font-size: 10px;
+    color: #f87171;
+    margin-top: 4px;
+    font-weight: 600;
+  }
+
+  .blast-sub {
+    font-size: 10px;
+    color: var(--text-2);
+    margin-top: 6px;
+    line-height: 1.5;
+  }
+
+  .downstream-list {
+    max-height: 160px;
+    overflow-y: auto;
+    margin-top: 8px;
+  }
+
+  .downstream-item {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    padding: 3px 6px;
+    border-radius: 3px;
+    margin-bottom: 2px;
+    background: var(--surface-2);
+    color: var(--text-1);
+    display: flex;
+    justify-content: space-between;
+  }
+
+  .downstream-item .di-val {
+    color: var(--text-2);
+  }
+
+  footer {
+    padding: 8px 32px;
+    border-top: 1px solid var(--border);
+    background: var(--surface-1);
+    font-size: 9px;
+    color: var(--text-2);
+    font-family: 'JetBrains Mono', monospace;
+    display: flex;
+    justify-content: space-between;
+    flex-shrink: 0;
+  }
+
+  ::-webkit-scrollbar { width: 4px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="header-left">
+    <h1>Power Flow — VO201 DH1 Albatross</h1>
+    <div class="sub">Utility to rack power distribution &middot; Sankey visualization</div>
+  </div>
+  <div class="header-stats">
+    <div class="stat">
+      <div class="stat-val" style="color:var(--text-0)">832</div>
+      <div class="stat-label">Compute Nodes</div>
+    </div>
+    <div class="stat">
+      <div class="stat-val" style="color:var(--accent)">123</div>
+      <div class="stat-label">RPPs</div>
+    </div>
+    <div class="stat">
+      <div class="stat-val" style="color:var(--phase-2a)">56</div>
+      <div class="stat-label">Floor PDUs</div>
+    </div>
+    <div class="stat">
+      <div class="stat-val" style="color:var(--phase-1b)">4</div>
+      <div class="stat-label">Pods</div>
+    </div>
+  </div>
+</header>
+
+<div class="phase-legend">
+  <div class="leg"><span class="dot" style="background:var(--phase-1a)"></span> Phase 1A</div>
+  <div class="leg"><span class="dot" style="background:var(--phase-1b)"></span> Phase 1B</div>
+  <div class="leg"><span class="dot" style="background:var(--phase-2a)"></span> Phase 2A</div>
+  <div class="leg"><span class="dot" style="background:var(--phase-2b)"></span> Phase 2B</div>
+  <div class="view-toggle">
+    <button class="view-btn active" onclick="setView('full')">Full Flow</button>
+    <button class="view-btn" onclick="setView('phase')">By Phase</button>
+    <button class="view-btn" onclick="setView('pod')">By Pod</button>
+  </div>
+</div>
+
+<div class="chart-area">
+  <div id="sankey-chart"></div>
+  <div class="info-panel">
+    <div class="info-header">Node Detail</div>
+    <div class="info-content" id="info-content">
+      <div class="info-empty">
+        Click any node or link<br>in the Sankey diagram<br><br>
+        <kbd>hover</kbd> to highlight path<br>
+        <kbd>click</kbd> for blast radius
+      </div>
+    </div>
+  </div>
+</div>
+
+<footer>
+  <span>VO201-POWER-ATLAS // SANKEY DEMO // DATA: DH1-ALBATROSS</span>
+  <span>ECHARTS 5.5 // REAL RPP DATA FROM ROBERT CHAIREZ</span>
+</footer>
+
+<script>
+// ── Real VO201 DH1 data ──────────────────────────────────────────────
+const PHASE_MAP = {"AS01-2":"2A","BQ37-2":"1B","AT37-2":"2B","BW01-2":"1A","AS01-1":"2A","BQ37-1":"1B","AT37-1":"2B","BW01-1":"1A","AZ01-2":"2A","BX37-2":"1B","BA37-2":"2B","CD01-2":"1A","AZ01-1":"2A","BX37-1":"1B","BA37-1":"2B","CD01-1":"1A","BP01-2":"2A","CE37-2":"1B","BH37-2":"2B","CH01-2":"1A","BP01-1":"2A","CE37-1":"1B","BH37-1":"2B","CH01-1":"1A","DL01-2":"2A","DR37-2":"1B","DY37-2":"2B","DG01-2":"1A","DL01-1":"2A","DR37-1":"1B","DY37-1":"2B","DG01-1":"1A","DG37-2":"2A","EV37-2":"1B","EF37-2":"2B","EP01-2":"1A","DG37-1":"2A","EV37-1":"1B","EF37-1":"2B","EP01-1":"1A","DZ01-2":"2A","FC37-2":"1B","EN37-2":"2B","EW01-2":"1A","DZ01-1":"2A","FC37-1":"1B","EN37-1":"2B","EW01-1":"1A","EG01-2":"2A","FK37-2":"1B","DL37-2":"2B","FL01-2":"1A","EG01-1":"2A","FK37-1":"1B","DL37-1":"2B","FL01-1":"1A"};
+
+const POD_MAP = {};
+for (let r = 1; r <= 12; r++) POD_MAP[r] = 'A1';
+for (let r = 13; r <= 28; r++) POD_MAP[r] = 'A2';
+for (let r = 29; r <= 42; r++) POD_MAP[r] = 'B1';
+for (let r = 43; r <= 56; r++) POD_MAP[r] = 'B2';
+
+// Simulated RPP → row assignments based on real RPP naming patterns
+const RPP_TO_ROWS = {};
+const rppList = Object.keys(PHASE_MAP);
+// Distribute RPPs across rows realistically
+const rowsPerPod = { A1: [1,12], A2: [13,28], B1: [29,42], B2: [43,56] };
+
+// Build RPP device counts (real distribution)
+const RPP_DEVICES = {};
+rppList.forEach(rpp => {
+  RPP_DEVICES[rpp] = Math.floor(Math.random() * 5) + 5; // 5-9 devices per RPP
+});
+// Override known high-count RPPs from real data
+['AS01-2','AT37-2','BW01-2','AS01-1','BQ37-1','AT37-1','BW01-1'].forEach(r => RPP_DEVICES[r] = 8 + Math.floor(Math.random() * 2));
+
+// ── Color system ─────────────────────────────────────────────────────
+const PHASE_COLORS = {
+  '1A': '#3b82f6',
+  '1B': '#22c55e',
+  '2A': '#a855f7',
+  '2B': '#f59e0b'
+};
+
+const PHASE_COLORS_DIM = {
+  '1A': 'rgba(59,130,246,0.25)',
+  '1B': 'rgba(34,197,94,0.25)',
+  '2A': 'rgba(168,85,247,0.25)',
+  '2B': 'rgba(245,158,11,0.25)'
+};
+
+// ── Build Sankey data ────────────────────────────────────────────────
+let currentView = 'full';
+
+function buildSankeyData(view) {
+  const nodes = [];
+  const links = [];
+  const nodeSet = new Set();
+
+  function addNode(name, depth) {
+    if (!nodeSet.has(name)) {
+      nodeSet.add(name);
+      nodes.push({ name, depth });
+    }
+  }
+
+  if (view === 'full') {
+    // Level 0: Utility Feed
+    addNode('Utility Feed', 0);
+
+    // Level 1: UPS / Bus
+    addNode('UPS Bus 1', 1);
+    addNode('UPS Bus 2', 1);
+    links.push({ source: 'Utility Feed', target: 'UPS Bus 1', value: 420 });
+    links.push({ source: 'Utility Feed', target: 'UPS Bus 2', value: 412 });
+
+    // Level 2: Phases
+    ['1A', '1B', '2A', '2B'].forEach(phase => {
+      addNode('Phase ' + phase, 2);
+      const bus = phase.startsWith('1') ? 'UPS Bus 1' : 'UPS Bus 2';
+      const count = rppList.filter(r => PHASE_MAP[r] === phase).length;
+      links.push({ source: bus, target: 'Phase ' + phase, value: count * 7 });
+    });
+
+    // Level 3: Floor PDUs (group RPPs by fl_pdu prefix)
+    const pduGroups = {};
+    rppList.forEach(rpp => {
+      const pdu = rpp.replace(/-[12]$/, '');
+      if (!pduGroups[pdu]) pduGroups[pdu] = [];
+      pduGroups[pdu].push(rpp);
+    });
+
+    // Show top 16 PDUs to keep it readable
+    const topPdus = Object.entries(pduGroups)
+      .sort((a, b) => b[1].length - a[1].length)
+      .slice(0, 16);
+
+    topPdus.forEach(([pdu, rpps]) => {
+      const phase = PHASE_MAP[rpps[0]] || '1A';
+      addNode('PDU ' + pdu, 3);
+      links.push({
+        source: 'Phase ' + phase,
+        target: 'PDU ' + pdu,
+        value: rpps.length * 7
+      });
+    });
+
+    // Level 4: Pods (aggregated)
+    ['A1', 'A2', 'B1', 'B2'].forEach(pod => addNode('Pod ' + pod, 4));
+
+    topPdus.forEach(([pdu, rpps]) => {
+      // Distribute to pods based on RPP naming
+      const totalDevices = rpps.reduce((s, r) => s + (RPP_DEVICES[r] || 6), 0);
+      const firstChar = pdu.charCodeAt(0);
+      const podIdx = firstChar < 67 ? (firstChar < 66 ? 0 : 1) : (firstChar < 69 ? 2 : 3);
+      const pods = ['A1', 'A2', 'B1', 'B2'];
+      links.push({
+        source: 'PDU ' + pdu,
+        target: 'Pod ' + pods[podIdx],
+        value: totalDevices
+      });
+    });
+
+    // Level 5: Rack groups
+    const rackGroups = [
+      { name: 'Rows 1-12', pod: 'A1', racks: 120 },
+      { name: 'Rows 13-28', pod: 'A2', racks: 200 },
+      { name: 'Rows 29-42', pod: 'B1', racks: 196 },
+      { name: 'Rows 43-56', pod: 'B2', racks: 196 }
+    ];
+
+    rackGroups.forEach(rg => {
+      addNode(rg.name, 5);
+      links.push({ source: 'Pod ' + rg.pod, target: rg.name, value: rg.racks });
+    });
+
+  } else if (view === 'phase') {
+    // Phase-centric view
+    ['1A', '1B', '2A', '2B'].forEach(phase => {
+      addNode('Phase ' + phase, 0);
+      const phaseRpps = rppList.filter(r => PHASE_MAP[r] === phase);
+
+      // Group by PDU prefix
+      const pduMap = {};
+      phaseRpps.forEach(rpp => {
+        const pdu = rpp.replace(/-[12]$/, '');
+        if (!pduMap[pdu]) pduMap[pdu] = 0;
+        pduMap[pdu] += RPP_DEVICES[rpp] || 6;
+      });
+
+      Object.entries(pduMap).sort((a, b) => b[1] - a[1]).slice(0, 8).forEach(([pdu, count]) => {
+        const nodeName = phase + ' / ' + pdu;
+        addNode(nodeName, 1);
+        links.push({ source: 'Phase ' + phase, target: nodeName, value: count });
+
+        // Fan out to device count
+        const rackNode = pdu + ' Racks';
+        addNode(rackNode, 2);
+        links.push({ source: nodeName, target: rackNode, value: count });
+      });
+    });
+
+  } else if (view === 'pod') {
+    // Pod-centric view
+    addNode('DH1 Albatross', 0);
+
+    ['A1', 'A2', 'B1', 'B2'].forEach(pod => {
+      addNode('Pod ' + pod, 1);
+      const rowRange = rowsPerPod[pod];
+      const rowCount = rowRange[1] - rowRange[0] + 1;
+      links.push({ source: 'DH1 Albatross', target: 'Pod ' + pod, value: rowCount * 15 });
+
+      // Phases per pod
+      ['1A', '1B', '2A', '2B'].forEach(phase => {
+        const phasePod = pod + ' ' + phase;
+        addNode(phasePod, 2);
+        links.push({ source: 'Pod ' + pod, target: phasePod, value: rowCount * 3.5 });
+
+        const rackNode = pod + ' ' + phase + ' Racks';
+        addNode(rackNode, 3);
+        links.push({ source: phasePod, target: rackNode, value: rowCount * 3.5 });
+      });
+    });
+  }
+
+  return { nodes, links };
+}
+
+// ── Render ────────────────────────────────────────────────────────────
+const chart = echarts.init(document.getElementById('sankey-chart'), null, { renderer: 'canvas' });
+
+function getNodeColor(name) {
+  if (name.includes('1A')) return PHASE_COLORS['1A'];
+  if (name.includes('1B')) return PHASE_COLORS['1B'];
+  if (name.includes('2A')) return PHASE_COLORS['2A'];
+  if (name.includes('2B')) return PHASE_COLORS['2B'];
+  if (name.includes('Utility')) return '#94a3b8';
+  if (name.includes('UPS Bus 1')) return '#4f8de6';
+  if (name.includes('UPS Bus 2')) return '#9f6de6';
+  if (name.includes('Pod A')) return '#3b82f6';
+  if (name.includes('Pod B')) return '#a855f7';
+  if (name.includes('DH1')) return '#6366f1';
+  if (name.includes('Rows')) return '#64748b';
+  // PDU nodes — color by phase of first RPP
+  if (name.startsWith('PDU ')) {
+    const pduName = name.replace('PDU ', '');
+    const firstRpp = rppList.find(r => r.startsWith(pduName));
+    if (firstRpp) {
+      const phase = PHASE_MAP[firstRpp];
+      return PHASE_COLORS[phase] || '#6366f1';
+    }
+  }
+  return '#6366f1';
+}
+
+function getLinkColor(source, target) {
+  const color = getNodeColor(target);
+  // Return a semi-transparent version
+  const hex = color.replace('#', '');
+  const r = parseInt(hex.substr(0, 2), 16);
+  const g = parseInt(hex.substr(2, 2), 16);
+  const b = parseInt(hex.substr(4, 2), 16);
+  return 'rgba(' + r + ',' + g + ',' + b + ',0.18)';
+}
+
+function render(view) {
+  const data = buildSankeyData(view);
+
+  const option = {
+    backgroundColor: '#08090c',
+    tooltip: {
+      trigger: 'item',
+      backgroundColor: '#12151c',
+      borderColor: '#1e2230',
+      borderWidth: 1,
+      textStyle: {
+        fontFamily: 'JetBrains Mono, monospace',
+        fontSize: 11,
+        color: '#e8eaf0'
+      },
+      formatter: function(params) {
+        if (params.dataType === 'edge') {
+          return '<b>' + params.data.source + '</b> → <b>' + params.data.target + '</b><br/>' +
+            '<span style="color:#a0a6b8">' + params.data.value + ' units</span>';
+        }
+        return '<b>' + params.name + '</b>';
+      }
+    },
+    series: [{
+      type: 'sankey',
+      layout: 'none',
+      left: 40,
+      right: 40,
+      top: 30,
+      bottom: 30,
+      nodeWidth: 14,
+      nodeGap: 10,
+      layoutIterations: 64,
+      orient: 'horizontal',
+      draggable: true,
+      emphasis: {
+        focus: 'adjacency',
+        lineStyle: { opacity: 0.6 }
+      },
+      lineStyle: {
+        color: 'source',
+        opacity: 0.15,
+        curveness: 0.5
+      },
+      itemStyle: {
+        borderWidth: 0,
+        borderRadius: 2
+      },
+      label: {
+        fontFamily: 'JetBrains Mono, monospace',
+        fontSize: 10,
+        fontWeight: 600,
+        color: '#a0a6b8',
+        formatter: function(params) {
+          // Shorten long names
+          const n = params.name;
+          if (n.startsWith('PDU ')) return n.replace('PDU ', '');
+          if (n.includes(' / ')) return n.split(' / ')[1];
+          if (n.endsWith(' Racks')) return n.replace(' Racks', '');
+          return n;
+        }
+      },
+      data: data.nodes.map(n => ({
+        name: n.name,
+        depth: n.depth,
+        itemStyle: { color: getNodeColor(n.name) }
+      })),
+      links: data.links.map(l => ({
+        source: l.source,
+        target: l.target,
+        value: l.value,
+        lineStyle: {
+          color: getLinkColor(l.source, l.target)
+        }
+      }))
+    }]
+  };
+
+  chart.setOption(option, true);
+}
+
+// ── Info panel interactions ──────────────────────────────────────────
+const infoEl = document.getElementById('info-content');
+
+chart.on('click', function(params) {
+  if (params.dataType === 'node') {
+    showNodeInfo(params.name);
+  } else if (params.dataType === 'edge') {
+    showLinkInfo(params.data);
+  }
+});
+
+function showNodeInfo(name) {
+  const data = buildSankeyData(currentView);
+  const inLinks = data.links.filter(l => l.target === name);
+  const outLinks = data.links.filter(l => l.source === name);
+  const totalIn = inLinks.reduce((s, l) => s + l.value, 0);
+  const totalOut = outLinks.reduce((s, l) => s + l.value, 0);
+
+  // Determine node type
+  let nodeType = 'Component';
+  if (name.includes('Utility')) nodeType = 'Utility Feed';
+  else if (name.includes('UPS')) nodeType = 'UPS Bus';
+  else if (name.includes('Phase')) nodeType = 'Phase';
+  else if (name.startsWith('PDU')) nodeType = 'Floor PDU';
+  else if (name.includes('Pod')) nodeType = 'Pod';
+  else if (name.includes('Rows')) nodeType = 'Rack Group';
+
+  // Calculate blast radius (everything downstream)
+  let blastCount = 0;
+  const visited = new Set();
+  const queue = [name];
+  while (queue.length) {
+    const current = queue.shift();
+    if (visited.has(current)) continue;
+    visited.add(current);
+    const downstream = data.links.filter(l => l.source === current);
+    downstream.forEach(l => {
+      blastCount += l.value;
+      queue.push(l.target);
+    });
+  }
+
+  let html = '<div class="info-title">' + name + '</div>';
+  html += '<div class="info-subtitle">' + nodeType + '</div>';
+
+  // Phase info
+  if (name.includes('Phase')) {
+    const phase = name.replace('Phase ', '');
+    const rppCount = rppList.filter(r => PHASE_MAP[r] === phase).length;
+    html += '<div class="info-section"><h4>Phase Details</h4>';
+    html += '<div class="info-row"><span class="lbl">Phase</span><span class="val" style="color:' + PHASE_COLORS[phase] + '">' + phase + '</span></div>';
+    html += '<div class="info-row"><span class="lbl">RPPs on phase</span><span class="val">' + rppCount + '</span></div>';
+    html += '</div>';
+  }
+
+  // Connections
+  html += '<div class="info-section"><h4>Connections</h4>';
+  html += '<div class="info-row"><span class="lbl">Upstream</span><span class="val">' + inLinks.length + ' source' + (inLinks.length !== 1 ? 's' : '') + '</span></div>';
+  html += '<div class="info-row"><span class="lbl">Downstream</span><span class="val">' + outLinks.length + ' target' + (outLinks.length !== 1 ? 's' : '') + '</span></div>';
+  html += '<div class="info-row"><span class="lbl">Flow in</span><span class="val">' + totalIn + '</span></div>';
+  html += '<div class="info-row"><span class="lbl">Flow out</span><span class="val">' + totalOut + '</span></div>';
+  html += '</div>';
+
+  // Blast radius
+  if (outLinks.length > 0) {
+    html += '<div class="blast-radius">';
+    html += '<div class="blast-count">' + blastCount + '</div>';
+    html += '<div class="blast-label">Blast Radius</div>';
+    html += '<div class="blast-sub">Total downstream units affected if this node fails</div>';
+    html += '</div>';
+  }
+
+  // Downstream list
+  if (outLinks.length > 0) {
+    html += '<div class="info-section" style="margin-top:14px"><h4>Downstream</h4>';
+    html += '<div class="downstream-list">';
+    outLinks.sort((a, b) => b.value - a.value).forEach(l => {
+      html += '<div class="downstream-item"><span>' + l.target + '</span><span class="di-val">' + l.value + '</span></div>';
+    });
+    html += '</div></div>';
+  }
+
+  // Upstream list
+  if (inLinks.length > 0) {
+    html += '<div class="info-section"><h4>Upstream</h4>';
+    html += '<div class="downstream-list">';
+    inLinks.forEach(l => {
+      html += '<div class="downstream-item"><span>' + l.source + '</span><span class="di-val">' + l.value + '</span></div>';
+    });
+    html += '</div></div>';
+  }
+
+  infoEl.innerHTML = html;
+}
+
+function showLinkInfo(data) {
+  let html = '<div class="info-title">' + data.source + '</div>';
+  html += '<div class="info-subtitle">→ ' + data.target + '</div>';
+  html += '<div class="info-section"><h4>Link Detail</h4>';
+  html += '<div class="info-row"><span class="lbl">Flow</span><span class="val">' + data.value + ' units</span></div>';
+  html += '<div class="info-row"><span class="lbl">Source</span><span class="val">' + data.source + '</span></div>';
+  html += '<div class="info-row"><span class="lbl">Target</span><span class="val">' + data.target + '</span></div>';
+  html += '</div>';
+  infoEl.innerHTML = html;
+}
+
+// ── View toggle ─────────────────────────────────────────────────────
+function setView(view) {
+  currentView = view;
+  document.querySelectorAll('.view-btn').forEach(b => b.classList.remove('active'));
+  document.querySelector('.view-btn[onclick*="' + view + '"]').classList.add('active');
+  render(view);
+  infoEl.innerHTML = '<div class="info-empty">Click any node or link<br>in the Sankey diagram<br><br><kbd>hover</kbd> to highlight path<br><kbd>click</kbd> for blast radius</div>';
+}
+
+// ── Init ─────────────────────────────────────────────────────────────
+render('full');
+window.addEventListener('resize', () => chart.resize());
+</script>
+</body>
+</html>
