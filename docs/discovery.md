@@ -195,4 +195,70 @@ Everything else comes after multi-site architecture is settled.
 
 ---
 
+## Demo: ECharts Sankey Power Flow
+
+**Built:** 2026-03-30 — working prototype using real DH1 Albatross data.
+
+**Local URL:** `file:///Users/rpatino/VO201-power-distribution/demos/sankey-power-flow.html`
+
+**Repo path:** `demos/sankey-power-flow.html` (on `romeo-branch`)
+
+**What it shows:**
+- **Full Flow view** — Utility Feed → UPS Bus 1/2 → Phase 1A/1B/2A/2B → 16 Floor PDUs → 4 Pods → Rack Groups
+- **By Phase view** — Each phase fanning out to its PDUs and downstream racks
+- **By Pod view** — DH1 Albatross → 4 pods (A1/A2/B1/B2) → phases per pod → racks
+
+**Uses real data from Robert's code:**
+- 123 RPP names from `PHASE_MAP`
+- Real phase assignments (1A, 1B, 2A, 2B)
+- 56 floor PDUs extracted from RPP naming
+- 4 pods (A1: rows 1-12, A2: rows 13-28, B1: rows 29-42, B2: rows 43-56)
+- 832 compute nodes
+
+**Interactive features:**
+- Hover any link → highlights the full upstream/downstream path
+- Click any node → detail panel shows blast radius (total downstream units affected if that node fails)
+- Click "Phase 2A" → see exactly how many racks go dark
+- 3 toggle views (Full Flow / By Phase / By Pod)
+- Draggable nodes
+
+**Why this matters for the facilities meeting:**
+The ECharts Sankey diagram is the demo weapon. Show leadership power flowing from utility to rack in a live interactive chart — that's the "wow" that opens doors to facilities data. Start the demo by clicking a Phase node and showing the blast radius number. "If this phase goes down, X racks are affected — and we can show this for every site if facilities shares their RPP blueprints."
+
+---
+
+## Notes for Robert Meeting (2026-03-31)
+
+### Agenda
+1. **Demo the Sankey** — open `file:///Users/rpatino/VO201-power-distribution/demos/sankey-power-flow.html`, show all 3 views, click blast radius
+2. **Discuss the merge** — Romeo's Blueprint Map (CSV parser) + Robert's Power Atlas (live data overlays) = new shared product
+3. **Facilities meeting plan** — pitch: "VO201 has power redundancy issues. We built a blast radius tool. We need RPP blueprints to roll it out."
+4. **Repo ownership** — new shared repo in CW GitHub org? Romeo has org access, Robert doesn't yet.
+5. **Vibe coding workflow** — Robert is vibe coding the whole app. Discuss getting him on Claude Code so we can collaborate more efficiently. Benefits:
+   - **Claude Code** — Robert can describe what he wants and get working code. Same tool Romeo uses. Shared CLAUDE.md in the repo means both devs get the same context/rules.
+   - **Shared CLAUDE.md** — put project conventions, data schemas, and RPP naming rules in the repo's `CLAUDE.md`. Both Romeo and Robert's Claude sessions auto-load it. No more tribal knowledge stuck in one person's head.
+   - **GitHub Copilot** — if Robert uses VS Code, Copilot autocompletes in-context. Lower barrier than Claude Code but less powerful.
+   - **Cursor** — VS Code fork with AI built in. Good middle ground — visual editor + AI chat side panel. Robert might prefer this if he's more visual.
+   - **v0.dev** (Vercel) — paste a description, get a React component. Good for quick UI prototyping but locks you into React.
+   - **Recommendation:** Get Robert on **Claude Code** + a shared `CLAUDE.md` in the repo. That way both of you vibe code with the same project context, and the CLAUDE.md becomes the living architecture doc.
+6. **Open questions** — see "Questions to Ask Robert" section above
+
+### Action Items for Robert (before meeting if possible)
+- [ ] Rotate the exposed NetBox token in `netbox-proxy.py`
+- [ ] Check if Jira custom fields (`10207`, `10192`) are CW-standard
+- [ ] Think about whether a new shared repo works for him
+
+### What Romeo Brings to the Table
+- Blueprint Map parser (site-agnostic CSV → floor plan)
+- CW GitHub org access
+- Architecture plan (this doc)
+- ECharts Sankey demo (already built with Robert's real data)
+
+### What Robert Brings to the Table
+- Working Power Atlas prototype (Jira + NetBox integration)
+- VO201 tribal knowledge (RPP mappings, facilities contacts)
+- Relationship with leadership for facilities data request
+
+---
+
 *Last updated: 2026-03-30 by Romeo Patino*
