@@ -137,4 +137,62 @@ These depend on answers from the Robert meeting:
 
 ---
 
+## Open Source Integration Research
+
+47 GitHub repos evaluated across data center visualization, JS libraries, and infrastructure monitoring. Filtered to 16 worth integrating, ranked by value.
+
+### Tier 1: Integrate Now (replace hand-rolled code)
+
+| Library | Stars | What it replaces | Why |
+|---------|-------|-----------------|-----|
+| **[PapaParse](https://github.com/mholt/PapaParse)** | 12,500 | Custom CSV parsing | Battle-tested CSV parser. Handles quoted fields, streaming, Web Workers for large files. Drop-in for Blueprint Map integration. |
+| **[Panzoom](https://github.com/timmywil/panzoom)** | 1,900 | Robert's hand-rolled zoom/pan | 3KB, zero deps, focal-point zoom, touch support. Works on any DOM/SVG element. |
+| **[jira.js](https://github.com/MrRefactoring/jira.js)** | 474 | Raw fetch calls + jira-proxy.py | TypeScript Jira Cloud API client. Full type defs, pagination, tree-shakable. Kills the CORS proxy. |
+| **[Apache ECharts](https://github.com/apache/echarts)** | 62,000 | Nothing (new capability) | Sankey diagrams for power flow (utility -> transformer -> PDU -> rack). Gauge charts for live load. Heatmaps for power density. **The ECharts Sankey diagram is the demo weapon. Show leadership power flowing from utility to rack in a live interactive chart — that's the "wow" that opens doors to facilities data.** |
+
+### Tier 2: Integrate When Multi-Site
+
+| Library | Stars | Role |
+|---------|-------|------|
+| **[vis-network](https://github.com/visjs/vis-network)** | 3,500 | Electrical distribution topology graph — click through the power chain visually |
+| **[drawthe.net](https://github.com/cidrblock/drawthe.net)** | 1,000 | YAML-to-SVG diagram generation — define power topology in YAML, auto-render |
+| **[Uptime Kuma](https://github.com/louislam/uptime-kuma)** | 84,700 | Health monitoring for power infrastructure endpoints (UPS, PDU mgmt, BMS) |
+| **[pynetbox](https://github.com/netbox-community/pynetbox)** | ~500 | Python NetBox client — replaces hardcoded proxy, proper auth and pagination |
+
+### Tier 3: Future / Nice-to-Have
+
+| Library | Stars | Role |
+|---------|-------|------|
+| **[PDF.js](https://github.com/mozilla/pdf.js)** | 49,000 | Render facilities electrical PDFs in-browser with interactive annotations |
+| **[NUT](https://github.com/networkupstools/nut)** | 2,000 | Real-time SNMP polling from PDUs/UPS — live wattage per circuit |
+| **[poweriq-grafana](https://github.com/r4yfx/poweriq-grafana)** | 30 | Per-rack kW polling scripts — steal the collection pattern |
+| **[LibreDWG](https://github.com/LibreDWG/libredwg)** | 305 | Parse AutoCAD DWG files if facilities sends drawings in DWG format |
+| **[netbox-floorplan-plugin](https://github.com/netbox-community/netbox-floorplan-plugin)** | 109 | Pull rack positions from NetBox instead of hardcoding — if CW adopts it |
+| **[Fabric.js](https://github.com/fabricjs/fabric.js)** / **[Konva.js](https://github.com/konvajs/konva)** | 29K / 11K | Drag-and-drop floor plan editor — only if we want an admin UI for building layouts |
+| **[GElectrical](https://github.com/manuvarkey/GElectrical)** | 103 | Circuit analysis — load balancing, voltage drop. Power engineering, not just visualization. |
+
+### What We're Skipping (and why)
+
+| Skipped | Reason |
+|---------|--------|
+| Grafana (embed) | Too heavy to embed — better as a separate tool sharing data sources |
+| Socket.IO | No real-time sensor data yet — premature |
+| Ralph CMDB | Overlaps with NetBox, CW already uses NetBox |
+| GridStack / Muuri | Dashboard widget layout — not needed until many widgets exist |
+| Leaflet (indoor) | Cool for indoor mapping but current grid approach works fine |
+| D3.js (raw) | Too low-level — ECharts gives you more out of the box |
+
+### Phase 1 Integration Plan
+
+Start with 4 libraries that replace hand-rolled code with maintained alternatives:
+
+1. **PapaParse** — CSV parsing (Blueprint Map integration path)
+2. **Panzoom** — zoom/pan (replace custom implementation, 3KB)
+3. **jira.js** — Jira API (kill the proxy script, typed client)
+4. **ECharts** — power flow Sankey + gauges (the wow factor for facilities pitch)
+
+Everything else comes after multi-site architecture is settled.
+
+---
+
 *Last updated: 2026-03-30 by Romeo Patino*
