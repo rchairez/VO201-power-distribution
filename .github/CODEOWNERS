@@ -1,0 +1,24 @@
+# Power Atlas — Code Owners
+# GitHub enforces these on PRs: the listed owner must approve changes to their files.
+# Docs: https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/about-code-owners
+
+# Romeo — architecture, services, build, docs, demos
+/src/components/floor-plan.js    @rpatino-cw
+/src/services/                   @rpatino-cw
+/docs/                           @rpatino-cw
+/demos/                          @rpatino-cw
+/vite.config.js                  @rpatino-cw
+/package.json                    @rpatino-cw
+/.gitignore                      @rpatino-cw
+
+# Robert — data, detail views, RPP panel, power data
+/src/data/                       @rchairez
+/src/components/detail-panel.js  @rchairez
+/src/components/rpp-panel.js     @rchairez
+/start-power-atlas.sh            @rchairez
+
+# Shared — both must approve
+/CLAUDE.md                       @rpatino-cw @rchairez
+/src/styles/                     @rpatino-cw @rchairez
+/src/main.js                     @rpatino-cw @rchairez
+/index.html                      @rpatino-cw @rchairez
