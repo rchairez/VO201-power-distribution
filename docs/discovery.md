@@ -414,6 +414,74 @@ His answers might redirect the whole scope. **The tool should solve Robert's pai
 
 ---
 
+## The Feature That Makes This Exceptional: Single-Point-of-Failure Detector
+
+### The problem
+VO201 has known power redundancy issues. Every rack is supposed to have two independent power feeds (A and B) on different RPPs, different phases, different UPS buses. But nobody is systematically checking whether that's actually true. When it's not — and a single RPP fails — racks that should survive go dark because both feeds were on the same failure domain.
+
+### The feature
+Scan every rack automatically and flag power redundancy problems:
+
+| Health | Condition | What it means |
+|--------|-----------|---------------|
+| **RED** | Both A+B feeds on the same RPP | Single point of failure — one panel dies, rack goes completely dark |
+| **ORANGE** | Both feeds on the same phase | Phase failure kills both feeds simultaneously |
+| **YELLOW** | Both feeds on the same UPS bus | Bus failure kills both feeds |
+| **GREEN** | Different RPP, different phase, different bus | Fully redundant — survives any single failure |
+
+### Why it's realistic — the data already exists
+Robert's code already has:
+- `COMPUTE_NODES[]` with `rpp` and `phase` per node (A and B feeds)
+- `PHASE_MAP` mapping every RPP to its phase (1A, 1B, 2A, 2B)
+- UPS bus derivable from phase (1x = Bus 1, 2x = Bus 2)
+
+No new data sources. No API calls. Pure client-side analysis of data Robert already hardcoded. This could be built in a single session.
+
+### What it looks like in the app
+- **Floor plan overlay** — racks glow red/orange/yellow/green based on redundancy health
+- **Summary bar** — "47 racks RED / 12 ORANGE / 8 YELLOW / 765 GREEN"
+- **Click a red rack** — detail panel shows: "Feed A: RPP AS01-2 (Phase 2A) / Feed B: RPP AS01-1 (Phase 2A) — SAME RPP, SAME PHASE"
+- **Filter mode** — toggle to show only red racks, or only racks on a specific RPP
+- **Export** — CSV of all flagged racks for a remediation ticket
+
+### Why this is the killer feature
+1. **Finds real problems** — not theoretical, actual miscabled or poorly planned racks that will fail
+2. **Sells the facilities pitch** — "We found 47 racks with single points of failure at VO201. Give us the blueprints and we'll audit every site."
+3. **No new data needed** — works today with Robert's existing data
+4. **Operational value** — DCTs and NOC can use this during incidents to predict cascading failures
+5. **Differentiator** — NetBox doesn't do this. No CW tool does this. This is net new.
+
+### Implementation sketch
+```javascript
+function analyzeRedundancy(nodes) {
+  const rackHealth = {};
+  // Group nodes by rack (row + cab)
+  const byRack = groupBy(nodes, n => n.row + '-' + n.cab);
+
+  Object.entries(byRack).forEach(([rackId, rackNodes]) => {
+    const rpps = [...new Set(rackNodes.map(n => n.rpp))];
+    const phases = [...new Set(rackNodes.map(n => n.phase))];
+    const buses = [...new Set(phases.map(p => p.charAt(0)))]; // '1' or '2'
+
+    if (rpps.length === 1) {
+      rackHealth[rackId] = { level: 'RED', reason: 'Both feeds on same RPP: ' + rpps[0] };
+    } else if (phases.length === 1) {
+      rackHealth[rackId] = { level: 'ORANGE', reason: 'Both feeds on same phase: ' + phases[0] };
+    } else if (buses.length === 1) {
+      rackHealth[rackId] = { level: 'YELLOW', reason: 'Both feeds on same UPS bus: ' + buses[0] };
+    } else {
+      rackHealth[rackId] = { level: 'GREEN', reason: 'Fully redundant' };
+    }
+  });
+  return rackHealth;
+}
+```
+
+### Add to meeting agenda
+Tell Robert: "Your app already has the data to find single points of failure across the entire floor. We can light up every at-risk rack in red. That's the slide that gets facilities to hand over blueprints for every site."
+
+---
+
 ## Meeting Checklist (print this or have it open)
 
 - [ ] Open Sankey demo: `file:///Users/rpatino/VO201-power-distribution/demos/sankey-power-flow.html`
@@ -429,6 +497,7 @@ His answers might redirect the whole scope. **The tool should solve Robert's pai
   - [ ] Communication cadence (weekly sync + GitHub Issues)
   - [ ] Migration strategy (don't break what works)
   - [ ] 30-day milestones
+  - [ ] Single-point-of-failure detector — the killer feature pitch
   - [ ] Ask Robert what he wants
 - [ ] Action items to assign:
   - [ ] Robert: rotate NetBox token
