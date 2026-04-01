@@ -12,8 +12,11 @@ import json
 import os
 
 NETBOX_BASE = "https://coreweave.cloud.netboxapp.com"
-NETBOX_TOKEN = "e7413999d0bf411278032ceebb770ad41a3550ab"
+NETBOX_TOKEN = os.environ.get("NETBOX_TOKEN", "")
 PORT = 8099
+
+if not NETBOX_TOKEN:
+    raise SystemExit("ERROR: NETBOX_TOKEN environment variable is not set. Export it before running.")
 
 class ProxyHandler(http.server.BaseHTTPRequestHandler):
     def log_message(self, format, *args):

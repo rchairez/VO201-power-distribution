@@ -1,0 +1,15 @@
+{
+  "hooks": {
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "cd \"/Users/rchairez/Documents/Apps/VO201 Power Project\" && git status --porcelain | grep -q . && git add -A && git commit -m \"Auto-save: $(date '+%Y-%m-%d %H:%M')\" && git push 2>/dev/null || true",
+            "statusMessage": "Pushing to GitHub..."
+          }
+        ]
+      }
+    ]
+  }
+}

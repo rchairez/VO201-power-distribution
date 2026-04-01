@@ -1,0 +1,430 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>EVI01 DH1 – Power Distribution</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: #f0f2f8; color: #1e2a3a; font-family: -apple-system,'Segoe UI',system-ui,sans-serif; font-size:13px; display:flex; flex-direction:column; height:100vh; overflow:hidden; }
+
+  #header { background:#fff; padding:11px 18px; border-bottom:1px solid rgba(0,0,0,0.08); display:flex; align-items:center; gap:16px; flex-shrink:0; box-shadow:0 1px 3px rgba(0,0,0,0.06); }
+  #header h1 { font-size:15px; font-weight:700; color:#1e2a3a; }
+  #header .subtitle { font-size:11px; color:#94a3b8; margin-top:2px; }
+  .hdr-stat { margin-left:auto; display:flex; gap:20px; }
+  .hdr-kv { text-align:right; }
+  .hdr-kv .val { font-size:14px; font-weight:700; color:#6366f1; }
+  .hdr-kv .lbl { font-size:9px; color:#94a3b8; text-transform:uppercase; letter-spacing:0.8px; }
+
+  #legend { background:#fff; border-bottom:1px solid rgba(0,0,0,0.06); padding:5px 18px; display:flex; align-items:center; gap:6px; flex-shrink:0; font-size:11px; flex-wrap:wrap; }
+  .leg-title { color:#94a3b8; font-weight:700; font-size:9px; text-transform:uppercase; letter-spacing:0.8px; margin-right:4px; }
+  .leg-item { display:flex; align-items:center; gap:5px; color:#64748b; cursor:pointer; padding:3px 7px; border-radius:5px; border:1px solid transparent; transition:all 0.12s; white-space:nowrap; }
+  .leg-item:hover { background:rgba(0,0,0,0.04); }
+  .leg-item.active { border-color:rgba(99,102,241,0.3); background:rgba(99,102,241,0.07); font-weight:600; }
+  .leg-dot { width:10px; height:10px; border-radius:3px; flex-shrink:0; }
+
+  .layout { display:flex; flex:1; overflow:hidden; }
+
+  /* Sidebar */
+  #sidebar { width:210px; background:#fff; border-right:1px solid rgba(0,0,0,0.07); display:flex; flex-direction:column; flex-shrink:0; overflow:hidden; }
+  #sidebar h2 { font-size:10px; font-weight:700; color:#94a3b8; text-transform:uppercase; letter-spacing:1px; padding:11px 14px 8px; border-bottom:1px solid rgba(0,0,0,0.06); }
+  #sidebar-list { overflow-y:auto; flex:1; padding:8px 10px; }
+  .s-row { display:flex; align-items:center; gap:7px; padding:5px 6px; border-radius:6px; cursor:pointer; border:1px solid transparent; margin-bottom:2px; transition:all 0.12s; }
+  .s-row:hover { background:#f0f2f8; }
+  .s-row.active { background:#ede9fe; border-color:rgba(99,102,241,0.25); }
+  .s-dot { width:8px; height:8px; border-radius:2px; flex-shrink:0; }
+  .s-info { flex:1; min-width:0; }
+  .s-name { font-size:11px; font-weight:600; color:#334155; }
+  .s-detail { font-size:9px; color:#94a3b8; }
+  .s-kw { font-size:11px; font-weight:700; color:#475569; white-space:nowrap; }
+  .s-div { height:1px; background:rgba(0,0,0,0.06); margin:6px 0; }
+  .s-total { display:flex; justify-content:space-between; padding:5px 6px 2px; font-size:11px; font-weight:700; color:#1e2a3a; }
+
+  /* Main floor */
+  .main { flex:1; display:flex; flex-direction:column; overflow:hidden; position:relative; }
+  .floor-area { flex:1; overflow:auto; padding:14px 18px 40px; }
+  #floor-plan { display:inline-block; min-width:fit-content; }
+
+  /* Pod section dividers */
+  .pod-div { font-size:9px; font-weight:700; color:#94a3b8; text-transform:uppercase; letter-spacing:1px; padding:8px 0 3px 28px; display:flex; align-items:center; gap:6px; }
+  .pod-div::after { content:''; flex:1; height:1px; background:rgba(0,0,0,0.07); }
+
+  /* Rack rows */
+  .row-wrap { display:flex; align-items:center; gap:4px; margin-bottom:1px; }
+  .row-num { width:22px; font-size:9px; color:#cbd5e1; text-align:right; flex-shrink:0; }
+  .rack-row { display:flex; gap:1px; }
+
+  /* Individual rack cells */
+  .rack { width:50px; height:40px; border-radius:4px; border:1px solid rgba(0,0,0,0.1); display:flex; flex-direction:column; align-items:center; justify-content:center; cursor:pointer; transition:all 0.12s; position:relative; }
+  .rack.clickable:hover { transform:translateY(-1px); box-shadow:0 2px 6px rgba(0,0,0,0.15); }
+  .rack.selected { border-color:#6366f1 !important; border-width:1.5px; box-shadow:0 0 0 2px rgba(99,102,241,0.2); z-index:5; }
+  .rack.dimmed { opacity:0.15; }
+  .rack.res { background:#f1f5f9; border-color:rgba(0,0,0,0.05); cursor:default; }
+  .rack-num { font-size:8px; color:rgba(255,255,255,0.7); line-height:1; }
+  .rack-type { font-size:7px; color:rgba(255,255,255,0.55); text-align:center; padding:0 2px; }
+
+  /* Detail panel */
+  #detail { width:240px; background:#fff; border-left:1px solid rgba(0,0,0,0.07); display:flex; flex-direction:column; flex-shrink:0; overflow:hidden; transition:width 0.18s; }
+  #detail.hidden { width:0; border-left:none; }
+  #detail-inner { padding:14px; overflow-y:auto; flex:1; min-width:240px; }
+  #detail h3 { font-size:12px; font-weight:700; color:#1e2a3a; margin-bottom:12px; display:flex; align-items:center; gap:8px; }
+  .close-btn { margin-left:auto; width:20px; height:20px; border:none; background:#f1f5f9; border-radius:4px; cursor:pointer; font-size:11px; color:#64748b; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+  .close-btn:hover { background:#e2e8f0; }
+  .d-section { background:#f8fafc; border-radius:8px; padding:10px 12px; margin-bottom:10px; }
+  .d-title { font-size:9px; font-weight:700; color:#94a3b8; text-transform:uppercase; letter-spacing:0.8px; margin-bottom:8px; }
+  .d-kv { display:flex; justify-content:space-between; font-size:11px; margin-bottom:4px; }
+  .d-kv span:first-child { color:#64748b; }
+  .d-kv span:last-child { font-weight:600; color:#1e2a3a; }
+
+  #zoom-ctrl { position:absolute; bottom:14px; right:14px; display:flex; align-items:center; gap:4px; background:rgba(255,255,255,0.92); border:1px solid rgba(0,0,0,0.1); border-radius:8px; padding:4px 6px; box-shadow:0 2px 8px rgba(0,0,0,0.1); z-index:50; backdrop-filter:blur(6px); }
+  #zoom-ctrl button { width:22px; height:22px; border:none; background:#f1f5f9; border-radius:5px; cursor:pointer; font-size:14px; font-weight:700; color:#475569; display:flex; align-items:center; justify-content:center; transition:background 0.1s; line-height:1; padding:0; }
+  #zoom-ctrl button:hover { background:#e2e8f0; }
+  #zoom-level { font-size:10px; font-weight:700; color:#64748b; min-width:34px; text-align:center; }
+</style>
+</head>
+<body>
+
+<div id="header">
+  <div>
+    <h1>Data Hall 1 — EVI01</h1>
+    <div class="subtitle">US-CENTRAL-07A · Elk Grove · Grid/Row layout</div>
+  </div>
+  <div class="hdr-stat">
+    <div class="hdr-kv"><div class="val" id="hdr-kw">—</div><div class="lbl">Total kW</div></div>
+    <div class="hdr-kv"><div class="val" id="hdr-racks">—</div><div class="lbl">Racks</div></div>
+  </div>
+</div>
+
+<div id="legend">
+  <span class="leg-title">Device Type</span>
+</div>
+
+<div class="layout">
+  <div id="sidebar">
+    <h2>Power Summary</h2>
+    <div id="sidebar-list"></div>
+  </div>
+
+  <div class="main">
+    <div class="floor-area" id="floor-area">
+      <div id="floor-plan"></div>
+    </div>
+    <div id="zoom-ctrl">
+      <button id="zoom-out">−</button>
+      <div id="zoom-level">100%</div>
+      <button id="zoom-in">+</button>
+      <button id="zoom-reset" style="font-size:10px;width:auto;padding:0 6px;">Reset</button>
+    </div>
+  </div>
+
+  <div id="detail" class="hidden">
+    <div id="detail-inner">
+      <h3 id="detail-title">Rack Detail <button class="close-btn" onclick="closeDetail()">✕</button></h3>
+      <div id="detail-body"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ── Device types → power/color ────────────────────────────────────────────
+const T = {
+  ETH:   { label:'ETH Switch',   kw:34,   color:'#6366f1', short:'ETH'  },
+  CPU:   { label:'CPU Compute',  kw:17.2, color:'#d97706', short:'CPU'  },
+  B200:  { label:'B200 GPU',     kw:105,  color:'#db2777', short:'B200' },
+  SC:    { label:'L2A Sidecar',  kw:10,   color:'#0891b2', short:'SC'   },
+  IB:    { label:'IB Switch',    kw:26,   color:'#3b82f6', short:'IB'   },
+  VCOMP: { label:'V-Compute',    kw:17.2, color:'#65a30d', short:'VCMP' },
+  INFRA: { label:'Infra / EOR',  kw:28,   color:'#7c3aed', short:'EOR'  },
+  RES:   { label:'Reserved',     kw:0,    color:'#cbd5e1', short:'RES'  },
+};
+
+// ── Row definitions ───────────────────────────────────────────────────────
+// Each row: { row, pod, label, racks: [type,...] (left→right, rack# 1st) }
+const ROWS = [
+  // Grid-A POD A1
+  { row:1,  pod:'A·POD A1', label:'A1', racks:[
+    {n:1,  t:'ETH'},{n:2,  t:'CPU'},{n:3,  t:'CPU'},{n:4, t:'CPU'},{n:5,  t:'CPU'},
+    {n:6,  t:'CPU'},{n:7,  t:'CPU'},{n:8,  t:'CPU'},{n:9, t:'RES'},{n:10, t:'ETH'} ]},
+  { row:2,  pod:'A·POD A1', racks:[
+    {n:20, t:'INFRA'},{n:19,t:'RES'},{n:18,t:'RES'},{n:17,t:'RES'},{n:16,t:'RES'},
+    {n:15, t:'CPU'}, {n:14,t:'CPU'},{n:13,t:'CPU'},{n:12,t:'CPU'},{n:11,t:'ETH'} ]},
+  // Grid-A POD A2
+  { row:3,  pod:'A·POD A2', label:'A2', racks:[
+    {n:21, t:'INFRA'},{n:22,t:'INFRA'},{n:23,t:'INFRA'},{n:24,t:'INFRA'},{n:25,t:'ETH'},
+    {n:26, t:'ETH'}, {n:27,t:'ETH'}, {n:28,t:'ETH'}, {n:29,t:'ETH'}, {n:30,t:'ETH'} ]},
+  { row:4,  pod:'A·POD A2', racks:[
+    {n:40, t:'ETH'},{n:39,t:'RES'},{n:38,t:'RES'},{n:37,t:'RES'},{n:36,t:'RES'},
+    {n:35, t:'RES'},{n:34,t:'RES'},{n:33,t:'RES'},{n:32,t:'RES'},{n:31,t:'RES'} ]},
+  // IB rows
+  { row:5,  pod:'IB Spine', label:'IB', racks: Array.from({length:10},(_,i)=>({n:41+i,t:'IB'})) },
+  { row:6,  pod:'IB Spine', racks: Array.from({length:10},(_,i)=>({n:60-i,t:'IB'})) },
+  // Grid-C POD C1 — B200 compute rows
+  { row:7,  pod:'C·POD C1', label:'C1', racks:[
+    {n:61, t:'ETH'},{n:62,t:'B200'},{n:63,t:'SC'},{n:64,t:'B200'},{n:65,t:'SC'},
+    {n:66, t:'B200'},{n:67,t:'SC'},{n:68,t:'B200'},{n:69,t:'SC'},{n:70,t:'IB'} ]},
+  { row:8,  pod:'C·POD C1', racks:[
+    {n:80, t:'IB'},{n:79,t:'B200'},{n:78,t:'SC'},{n:77,t:'B200'},{n:76,t:'SC'},
+    {n:75, t:'B200'},{n:74,t:'SC'},{n:73,t:'B200'},{n:72,t:'SC'},{n:71,t:'RES'} ]},
+  { row:9,  pod:'C·POD C1', racks:[
+    {n:81, t:'ETH'},{n:82,t:'B200'},{n:83,t:'SC'},{n:84,t:'B200'},{n:85,t:'SC'},
+    {n:86, t:'B200'},{n:87,t:'SC'},{n:88,t:'B200'},{n:89,t:'SC'},{n:90,t:'IB'} ]},
+  { row:10, pod:'C·POD C1', racks:[
+    {n:100,t:'IB'},{n:99,t:'B200'},{n:98,t:'SC'},{n:97,t:'B200'},{n:96,t:'SC'},
+    {n:95, t:'B200'},{n:94,t:'SC'},{n:93,t:'B200'},{n:92,t:'SC'},{n:91,t:'RES'} ]},
+  { row:11, pod:'C·POD C1', racks:[
+    {n:101,t:'ETH'},{n:102,t:'B200'},{n:103,t:'SC'},{n:104,t:'B200'},{n:105,t:'SC'},
+    {n:106,t:'B200'},{n:107,t:'SC'},{n:108,t:'B200'},{n:109,t:'SC'},{n:110,t:'IB'} ]},
+  { row:12, pod:'C·POD C1', racks:[
+    {n:120,t:'IB'},{n:119,t:'B200'},{n:118,t:'SC'},{n:117,t:'B200'},{n:116,t:'SC'},
+    {n:115,t:'B200'},{n:114,t:'SC'},{n:113,t:'B200'},{n:112,t:'SC'},{n:111,t:'RES'} ]},
+  { row:13, pod:'C·POD C1', racks:[
+    {n:121,t:'ETH'},{n:122,t:'B200'},{n:123,t:'SC'},{n:124,t:'B200'},{n:125,t:'SC'},
+    {n:126,t:'B200'},{n:127,t:'SC'},{n:128,t:'B200'},{n:129,t:'SC'},{n:130,t:'IB'} ]},
+  { row:14, pod:'C·POD C1', racks:[
+    {n:140,t:'IB'},{n:139,t:'B200'},{n:138,t:'SC'},{n:137,t:'B200'},{n:136,t:'SC'},
+    {n:135,t:'B200'},{n:134,t:'SC'},{n:133,t:'B200'},{n:132,t:'SC'},{n:131,t:'INFRA'} ]},
+  // Grid-A POD A3
+  { row:15, pod:'A·POD A3', label:'A3', racks:[
+    {n:141,t:'ETH'},{n:142,t:'CPU'},{n:143,t:'CPU'},{n:144,t:'CPU'},{n:145,t:'CPU'},
+    {n:146,t:'CPU'},{n:147,t:'RES'},{n:148,t:'RES'},{n:149,t:'RES'},{n:150,t:'RES'} ]},
+  { row:16, pod:'A·POD A3', racks:[
+    {n:160,t:'ETH'},{n:159,t:'RES'},{n:158,t:'RES'},{n:157,t:'RES'},{n:156,t:'RES'},
+    {n:155,t:'RES'},{n:154,t:'RES'},{n:153,t:'RES'},{n:152,t:'VCOMP'},{n:151,t:'ETH'} ]},
+  // Grid-B POD B1 (reserved)
+  { row:17, pod:'B·POD B1', label:'B1', racks: Array.from({length:10},(_,i)=>({n:161+i,t:'RES'})) },
+  { row:18, pod:'B·POD B1', racks:[
+    {n:180,t:'ETH'},{n:179,t:'RES'},{n:178,t:'RES'},{n:177,t:'RES'},{n:176,t:'RES'},
+    {n:175,t:'RES'},{n:174,t:'VCOMP'},{n:173,t:'VCOMP'},{n:172,t:'VCOMP'},{n:171,t:'ETH'} ]},
+  // Grid-F POD F1
+  { row:19, pod:'F·POD F1', label:'F1', racks:[
+    {n:181,t:'ETH'},{n:182,t:'VCOMP'},{n:183,t:'VCOMP'},{n:184,t:'VCOMP'},{n:185,t:'VCOMP'},
+    {n:186,t:'VCOMP'},{n:187,t:'VCOMP'},{n:188,t:'VCOMP'},{n:189,t:'VCOMP'},{n:190,t:'ETH'} ]},
+  { row:20, pod:'F·POD F1', racks: Array.from({length:10},(_,i)=>({n:200-i,t:'RES'})) },
+  // IB / Reserved
+  { row:21, pod:'IB Core', label:'IB', racks: Array.from({length:10},(_,i)=>({n:201+i,t:'RES'})) },
+  { row:22, pod:'IB Core', racks: Array.from({length:10},(_,i)=>({n:220-i,t:'IB'})) },
+  // Grid-C POD C2 — B200 compute rows
+  { row:23, pod:'C·POD C2', label:'C2', racks:[
+    {n:221,t:'ETH'},{n:222,t:'B200'},{n:223,t:'SC'},{n:224,t:'B200'},{n:225,t:'SC'},
+    {n:226,t:'B200'},{n:227,t:'SC'},{n:228,t:'B200'},{n:229,t:'SC'},{n:230,t:'IB'} ]},
+  { row:24, pod:'C·POD C2', racks:[
+    {n:240,t:'IB'},{n:239,t:'B200'},{n:238,t:'SC'},{n:237,t:'B200'},{n:236,t:'SC'},
+    {n:235,t:'B200'},{n:234,t:'SC'},{n:233,t:'B200'},{n:232,t:'SC'},{n:231,t:'RES'} ]},
+  { row:25, pod:'C·POD C2', racks:[
+    {n:241,t:'ETH'},{n:242,t:'B200'},{n:243,t:'SC'},{n:244,t:'B200'},{n:245,t:'SC'},
+    {n:246,t:'B200'},{n:247,t:'SC'},{n:248,t:'B200'},{n:249,t:'SC'},{n:250,t:'IB'} ]},
+  { row:26, pod:'C·POD C2', racks:[
+    {n:260,t:'IB'},{n:259,t:'B200'},{n:258,t:'SC'},{n:257,t:'B200'},{n:256,t:'SC'},
+    {n:255,t:'B200'},{n:254,t:'SC'},{n:253,t:'B200'},{n:252,t:'SC'},{n:251,t:'INFRA'} ]},
+  { row:27, pod:'C·POD C2', racks:[
+    {n:261,t:'ETH'},{n:262,t:'B200'},{n:263,t:'SC'},{n:264,t:'B200'},{n:265,t:'SC'},
+    {n:266,t:'B200'},{n:267,t:'SC'},{n:268,t:'B200'},{n:269,t:'SC'},{n:270,t:'IB'} ]},
+  { row:28, pod:'C·POD C2', racks:[
+    {n:280,t:'IB'},{n:279,t:'B200'},{n:278,t:'SC'},{n:277,t:'B200'},{n:276,t:'SC'},
+    {n:275,t:'B200'},{n:274,t:'SC'},{n:273,t:'B200'},{n:272,t:'SC'},{n:271,t:'RES'} ]},
+  { row:29, pod:'C·POD C2', racks:[
+    {n:281,t:'ETH'},{n:282,t:'B200'},{n:283,t:'SC'},{n:284,t:'B200'},{n:285,t:'SC'},
+    {n:286,t:'B200'},{n:287,t:'SC'},{n:288,t:'B200'},{n:289,t:'SC'},{n:290,t:'IB'} ]},
+  { row:30, pod:'C·POD C2', racks:[
+    {n:300,t:'IB'},{n:299,t:'B200'},{n:298,t:'SC'},{n:297,t:'B200'},{n:296,t:'SC'},
+    {n:295,t:'B200'},{n:294,t:'SC'},{n:293,t:'B200'},{n:292,t:'SC'},{n:291,t:'RES'} ]},
+  { row:31, pod:'C·POD C2', racks:[
+    {n:301,t:'ETH'},{n:302,t:'B200'},{n:303,t:'SC'},{n:304,t:'B200'},{n:305,t:'SC'},
+    {n:306,t:'B200'},{n:307,t:'SC'},{n:308,t:'B200'},{n:309,t:'SC'},{n:310,t:'IB'} ]},
+  { row:32, pod:'C·POD C2', racks:[
+    {n:320,t:'IB'},{n:319,t:'B200'},{n:318,t:'SC'},{n:317,t:'B200'},{n:316,t:'SC'},
+    {n:315,t:'B200'},{n:314,t:'SC'},{n:313,t:'B200'},{n:312,t:'SC'},{n:311,t:'RES'} ]},
+];
+
+// ── State ─────────────────────────────────────────────────────────────────
+let selectedType = null;
+let selectedRack = null;
+let zoom = 1;
+
+// ── Compute totals ────────────────────────────────────────────────────────
+const totals = {};
+let totalKw = 0, totalRacks = 0;
+ROWS.forEach(row => row.racks.forEach(r => {
+  const type = r.t;
+  const kw = T[type].kw;
+  totals[type] = totals[type] || { racks:0, kw:0 };
+  totals[type].racks++;
+  totals[type].kw += kw;
+  totalKw += kw;
+  if (type !== 'RES') totalRacks++;
+}));
+
+document.getElementById('hdr-kw').textContent = Math.round(totalKw).toLocaleString();
+document.getElementById('hdr-racks').textContent = totalRacks;
+
+// ── Legend ────────────────────────────────────────────────────────────────
+function buildLegend() {
+  const leg = document.getElementById('legend');
+  Object.entries(T).forEach(([key, t]) => {
+    const item = document.createElement('div');
+    item.className = 'leg-item';
+    item.dataset.type = key;
+    item.innerHTML = `<div class="leg-dot" style="background:${t.color}"></div>${t.label}`;
+    if (t.kw > 0) item.innerHTML += ` <span style="font-size:9px;color:#94a3b8">${t.kw} kW</span>`;
+    item.addEventListener('click', () => toggleFilter(key));
+    leg.appendChild(item);
+  });
+}
+
+function toggleFilter(type) {
+  selectedType = selectedType === type ? null : type;
+  document.querySelectorAll('.leg-item').forEach(el => el.classList.toggle('active', el.dataset.type === selectedType));
+  document.querySelectorAll('.s-row').forEach(el => el.classList.toggle('active', el.dataset.type === selectedType));
+  applyDimming();
+}
+
+function applyDimming() {
+  document.querySelectorAll('.rack').forEach(el => {
+    el.classList.toggle('dimmed', !!selectedType && el.dataset.type !== selectedType);
+  });
+}
+
+// ── Sidebar ───────────────────────────────────────────────────────────────
+function buildSidebar() {
+  const list = document.getElementById('sidebar-list');
+  Object.entries(T).forEach(([key, t]) => {
+    const d = totals[key];
+    if (!d) return;
+    const row = document.createElement('div');
+    row.className = 's-row';
+    row.dataset.type = key;
+    row.innerHTML = `
+      <div class="s-dot" style="background:${t.color}"></div>
+      <div class="s-info">
+        <div class="s-name">${t.label}</div>
+        <div class="s-detail">${d.racks} racks · ${t.kw} kW ea</div>
+      </div>
+      <div class="s-kw">${Math.round(d.kw).toLocaleString()} kW</div>
+    `;
+    row.addEventListener('click', () => toggleFilter(key));
+    list.appendChild(row);
+  });
+  const div = document.createElement('div'); div.className = 's-div'; list.appendChild(div);
+  const tot = document.createElement('div');
+  tot.className = 's-total';
+  tot.innerHTML = `<span>Total DH1</span><span>${Math.round(totalKw).toLocaleString()} kW</span>`;
+  list.appendChild(tot);
+}
+
+// ── Floor plan ────────────────────────────────────────────────────────────
+function buildFloor() {
+  const fp = document.getElementById('floor-plan');
+  fp.innerHTML = '';
+  let lastPod = null;
+
+  ROWS.forEach(rowDef => {
+    if (rowDef.pod !== lastPod) {
+      const div = document.createElement('div');
+      div.className = 'pod-div';
+      div.textContent = rowDef.pod;
+      fp.appendChild(div);
+      lastPod = rowDef.pod;
+    }
+
+    const wrap = document.createElement('div');
+    wrap.className = 'row-wrap';
+
+    const rn = document.createElement('div');
+    rn.className = 'row-num';
+    rn.textContent = rowDef.row;
+    wrap.appendChild(rn);
+
+    const rackRow = document.createElement('div');
+    rackRow.className = 'rack-row';
+
+    rowDef.racks.forEach(r => {
+      const t = T[r.t];
+      const cell = document.createElement('div');
+      cell.className = 'rack' + (r.t === 'RES' ? ' res' : ' clickable');
+      cell.dataset.type = r.t;
+      cell.dataset.rack = r.n;
+      cell.dataset.row = rowDef.row;
+      cell.dataset.pod = rowDef.pod;
+
+      if (r.t !== 'RES') {
+        cell.style.background = t.color;
+        cell.style.borderColor = t.color;
+        const num = document.createElement('div'); num.className = 'rack-num'; num.textContent = r.n;
+        const type = document.createElement('div'); type.className = 'rack-type'; type.textContent = t.short;
+        cell.appendChild(num); cell.appendChild(type);
+        cell.addEventListener('click', e => { e.stopPropagation(); selectRack(r, rowDef, cell); });
+      } else {
+        const num = document.createElement('div');
+        num.className = 'rack-num';
+        num.style.color = '#cbd5e1';
+        num.textContent = r.n;
+        cell.appendChild(num);
+      }
+
+      rackRow.appendChild(cell);
+    });
+
+    wrap.appendChild(rackRow);
+    fp.appendChild(wrap);
+  });
+}
+
+// ── Selection ─────────────────────────────────────────────────────────────
+function selectRack(r, rowDef, cellEl) {
+  document.querySelectorAll('.rack').forEach(c => c.classList.remove('selected'));
+  cellEl.classList.add('selected');
+  selectedRack = { r, rowDef };
+
+  const t = T[r.t];
+  document.getElementById('detail-title').innerHTML = `Rack ${r.n} <button class="close-btn" onclick="closeDetail()">✕</button>`;
+  document.getElementById('detail-body').innerHTML = `
+    <div class="d-section">
+      <div class="d-title">Rack Info</div>
+      <div class="d-kv"><span>Rack #</span><span>${r.n}</span></div>
+      <div class="d-kv"><span>Row</span><span>${rowDef.row}</span></div>
+      <div class="d-kv"><span>Grid / Pod</span><span>${rowDef.pod}</span></div>
+      <div class="d-kv"><span>Device Type</span><span>${t.label}</span></div>
+    </div>
+    <div class="d-section">
+      <div class="d-title">Power</div>
+      <div class="d-kv"><span>kW / Rack</span><span>${t.kw} kW</span></div>
+      <div class="d-kv"><span>Whips</span><span>TBD</span></div>
+      <div class="d-kv"><span>RPP / Feed</span><span style="color:#94a3b8">TBD</span></div>
+    </div>
+    <div class="d-section">
+      <div class="d-title">DH1 Total · ${t.label}</div>
+      <div class="d-kv"><span>Total Racks</span><span>${(totals[r.t]||{}).racks||0}</span></div>
+      <div class="d-kv"><span>Total kW</span><span>${Math.round((totals[r.t]||{}).kw||0).toLocaleString()} kW</span></div>
+    </div>
+    <div style="font-size:9px;color:#cbd5e1;font-style:italic;padding:2px">Power feed / RPP TBD</div>
+  `;
+  document.getElementById('detail').classList.remove('hidden');
+}
+
+function closeDetail() {
+  document.getElementById('detail').classList.add('hidden');
+  document.querySelectorAll('.rack').forEach(c => c.classList.remove('selected'));
+  selectedRack = null;
+}
+
+document.getElementById('floor-area').addEventListener('click', closeDetail);
+
+// ── Zoom ──────────────────────────────────────────────────────────────────
+function setZoom(z) {
+  zoom = Math.max(0.4, Math.min(2.5, z));
+  document.getElementById('zoom-level').textContent = Math.round(zoom*100)+'%';
+  const fp = document.getElementById('floor-plan');
+  fp.style.transform = `scale(${zoom})`;
+  fp.style.transformOrigin = 'top left';
+}
+document.getElementById('zoom-in').addEventListener('click',    () => setZoom(zoom+0.1));
+document.getElementById('zoom-out').addEventListener('click',   () => setZoom(zoom-0.1));
+document.getElementById('zoom-reset').addEventListener('click', () => setZoom(1));
+
+// ── Init ──────────────────────────────────────────────────────────────────
+buildLegend();
+buildSidebar();
+buildFloor();
+</script>
+</body>
+</html>

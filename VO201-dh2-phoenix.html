@@ -1281,7 +1281,6 @@ function addSerialHit(res, serial, info) {
 
 // ── NetBox Integration ─────────────────────────────────────────────────────
 const NB_BASE     = 'http://localhost:8099'; // proxied via netbox-proxy.py
-const NB_TOKEN    = 'e7413999d0bf411278032ceebb770ad41a3550ab';
 const NB_SITE     = 'us-central-01a';
 const NB_LOCATION = 'data-hall-2';
 
@@ -1293,7 +1292,7 @@ async function nbFetchAll(path) {
   let next = NB_BASE + path;
   while (next) {
     const r = await fetch(next, {
-      headers: { 'Authorization': 'Token ' + NB_TOKEN, 'Accept': 'application/json' }
+      headers: { 'Accept': 'application/json' }
     });
     if (!r.ok) throw new Error('NetBox HTTP ' + r.status);
     const data = await r.json();
